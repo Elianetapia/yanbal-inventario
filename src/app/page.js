@@ -39,9 +39,15 @@ const APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwALuyQiBRe0oZl
 
 async function gsRead(action) {
   try {
-    const r = await fetch(`${APPS_SCRIPT_URL}?action=${action}`);
-    const d = await r.json();
-    return d.rows || [];
+    const r = await fetch(`${APPS_SCRIPT_URL}?action=${action}`, { redirect: "follow" });
+    const text = await r.text();
+    try {
+      const d = JSON.parse(text);
+      return d.rows || [];
+    } catch {
+      console.error("gsRead parse error:", text.slice(0, 200));
+      return [];
+    }
   } catch (e) { console.error("gsRead error:", e); return []; }
 }
 
@@ -49,8 +55,10 @@ async function gsWrite(action, data, extra = "") {
   try {
     const params = new URLSearchParams({ action, data: JSON.stringify(data) });
     if (extra) extra.split("&").forEach(p => { const [k,v] = p.split("="); params.set(k,v); });
-    const r = await fetch(`${APPS_SCRIPT_URL}?${params.toString()}`);
-    return await r.json();
+    const r = await fetch(`${APPS_SCRIPT_URL}?${params.toString()}`, { redirect: "follow" });
+    const text = await r.text();
+    try { return JSON.parse(text); }
+    catch { console.error("gsWrite parse error:", text.slice(0, 200)); return { error: "Parse error" }; }
   } catch (e) { console.error("gsWrite error:", e); return { error: e.toString() }; }
 }
 
@@ -77,7 +85,12 @@ function parseOperadoras(rows) {
   return rows.map(r => ({ name: r.Nombre || "", pin: String(r.PIN || "0000"), role: r.Rol || "asistente", _row: r._row }));
 }
 
-function parseConsultoras(rows) { return rows.map(r => r.Nombre).filter(Boolean); }
+function parseConsultoras(rows) {
+  return rows.filter(r => r.Nombre).map(r => ({
+    name: r.Nombre || "", phone: r["Teléfono"] || "", address: r["Dirección"] || "",
+    dni: r.DNI || "", birthday: r["Cumpleaños"] || "", _row: r._row
+  }));
+}
 function parseCategorias(rows) { return rows.map(r => r.Nombre).filter(Boolean); }
 
 // ═══════════════════════════════════════════════
@@ -216,6 +229,7 @@ const SectionTitle = ({ children }) => (
 // ═══════════════════════════════════════════════
 export default function App() {
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [saving, setSaving] = useState(false);
   const [currentUser, setCurrentUser] = useState(null);
   const [page, setPage] = useState("stock");
@@ -230,14 +244,21 @@ export default function App() {
       gsRead("getProducts"), gsRead("getMovements"), gsRead("getConsultoras"),
       gsRead("getOperadoras"), gsRead("getCategorias")
     ]);
+    if (prods.length === 0 && ops.length === 0) {
+      throw new Error("No data returned from Google Sheets");
+    }
     setProducts(parseProducts(prods));
     setMovements(parseMovements(movs));
     setPeople(parseConsultoras(cons));
-    setOperators(prods.length > 0 ? parseOperadoras(ops) : DEFAULT_OPERATORS);
+    setOperators(ops.length > 0 ? parseOperadoras(ops) : DEFAULT_OPERATORS);
     setCategories(cats.length > 0 ? parseCategorias(cats) : DEFAULT_CATEGORIES);
   }, []);
 
-  useEffect(() => { reload().then(() => setLoading(false)); }, [reload]);
+  useEffect(() => {
+    reload()
+      .then(() => setLoading(false))
+      .catch(e => { console.error("Load failed:", e); setLoadError(true); setLoading(false); });
+  }, [reload]);
 
   // Wrap write operations: save to GSheets, then reload
   const withSave = useCallback(async (fn) => {
@@ -284,8 +305,12 @@ export default function App() {
   }, [withSave, products]);
 
   // ── Consultora operations ──
-  const addConsultora = useCallback(async (name) => {
-    await withSave(() => gsWrite("addConsultora", { Nombre: name }));
+  const addConsultora = useCallback(async (consultora) => {
+    await withSave(() => gsWrite("addConsultora", {
+      Nombre: consultora.name, "Teléfono": consultora.phone || "",
+      "Dirección": consultora.address || "", DNI: consultora.dni || "",
+      "Cumpleaños": consultora.birthday || ""
+    }));
   }, [withSave]);
   const removeConsultora = useCallback(async (index) => {
     // index is 0-based in our array, row in sheet is index+2 (1 header + 1-indexed)
@@ -347,6 +372,24 @@ export default function App() {
     </div>
   );
 
+  if (loadError) return (
+    <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center",
+      justifyContent: "center", fontFamily: FONT_BODY, padding: 20 }}>
+      <div style={{ textAlign: "center", maxWidth: 400 }}>
+        <div style={{ fontSize: 14, letterSpacing: 5, color: C.gold, fontWeight: 600 }}>YANBAL</div>
+        <div style={{ color: C.red, fontSize: 16, marginTop: 16, fontWeight: 600 }}>Error de conexión</div>
+        <div style={{ color: C.textMuted, fontSize: 14, marginTop: 8, lineHeight: 1.5 }}>
+          No se pudo conectar con Google Sheets. Verifica que el Apps Script esté desplegado correctamente y que el Sheet esté compartido.
+        </div>
+        <button onClick={() => { setLoadError(false); setLoading(true); reload().then(() => setLoading(false)).catch(() => { setLoadError(true); setLoading(false); }); }}
+          style={{ marginTop: 20, padding: "12px 24px", borderRadius: 8, border: "none",
+            background: C.gold, color: "#fff", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: FONT_BODY }}>
+          Reintentar
+        </button>
+      </div>
+    </div>
+  );
+
   if (!currentUser) return <LoginScreen operators={operators} onSelect={setCurrentUser} />;
 
   return (
@@ -359,7 +402,8 @@ export default function App() {
         {page === "stock" && <StockView products={products} movements={movements} categories={categories} />}
         {page === "move" && <MoveView products={products} people={people} movements={movements}
           user={currentUser.name} addMovement={addMovement} />}
-        {page === "loans" && <LoansView products={products} movements={movements} />}
+        {page === "loans" && <LoansView products={products} movements={movements}
+          addMovement={addMovement} currentUser={currentUser} can={can} />}
         {page === "history" && <HistoryView products={products} movements={movements} />}
         {page === "admin" && <AdminView products={products} people={people} operators={operators} categories={categories}
           currentUser={currentUser} can={can}
@@ -575,7 +619,7 @@ function StockView({ products, movements, categories }) {
       if (stockFilter === "agotado" && sedeQty > 0) return false;
       if (stockFilter === "bajo" && (sedeQty <= 0 || sedeQty > 3)) return false;
       return true;
-    });
+    }).sort((a, b) => a.name.localeCompare(b.name, "es"));
   }, [products, search, catFilter, sedeFilter, stockFilter, computedStock]);
 
   const stats = useMemo(() => {
@@ -763,7 +807,7 @@ function MoveView({ products, people, movements, user, addMovement }) {
             )}
             {needsPerson && (
               <div><label style={{ fontSize: 11, color: C.textMuted, display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 }}>{type === "prestamo" ? "Prestado a" : "Devuelto por"}</label>
-                <Select value={person} onChange={setPerson} options={people.length > 0 ? people : ["(Agrega consultoras en Admin)"]} placeholder="Seleccionar consultora" /></div>
+                <Select value={person} onChange={setPerson} options={people.length > 0 ? people.map(p => typeof p === "string" ? p : p.name) : ["(Agrega consultoras en Admin)"]} placeholder="Seleccionar consultora" /></div>
             )}
             <div><label style={{ fontSize: 11, color: C.textMuted, display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 }}>Notas (opcional)</label>
               <Input value={notes} onChange={setNotes} placeholder="Agregar nota..." /></div>
@@ -784,8 +828,18 @@ function MoveView({ products, people, movements, user, addMovement }) {
 // ═══════════════════════════════════════════════
 // LOANS VIEW
 // ═══════════════════════════════════════════════
-function LoansView({ products, movements }) {
-  const [filterPerson, setFilterPerson] = useState("");
+function LoansView({ products, movements, addMovement, currentUser, can }) {
+  const [search, setSearch] = useState("");
+  const [showReturn, setShowReturn] = useState(null);
+  const [showDelete, setShowDelete] = useState(null);
+  const [returnQty, setReturnQty] = useState("");
+  const [returnSede, setReturnSede] = useState("");
+  const [returnNote, setReturnNote] = useState("");
+  const [deleteNote, setDeleteNote] = useState("");
+  const [success, setSuccess] = useState("");
+
+  const canDelete = currentUser?.role === "admin" || currentUser?.role === "directora";
+
   const activeLoans = useMemo(() => {
     const loans = {};
     movements.filter(m => m.type === "prestamo" || m.type === "devolucion").forEach(m => {
@@ -796,12 +850,65 @@ function LoansView({ products, movements }) {
     });
     return Object.values(loans).filter(l => l.qty > 0);
   }, [movements]);
-  const filtered = filterPerson ? activeLoans.filter(l => l.person === filterPerson) : activeLoans;
+
+  const filtered = useMemo(() => {
+    if (!search) return activeLoans;
+    const s = search.toLowerCase();
+    return activeLoans.filter(l => l.person?.toLowerCase().includes(s));
+  }, [activeLoans, search]);
+
   const allPeople = [...new Set(activeLoans.map(l => l.person))];
+
+  const openReturn = (loan) => {
+    setReturnQty(String(loan.qty));
+    setReturnSede("");
+    setReturnNote("");
+    setShowReturn(loan);
+  };
+
+  const handleReturn = async () => {
+    if (!returnQty || !returnSede || !showReturn) return;
+    await addMovement({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      productId: showReturn.productId, type: "devolucion", qty: parseInt(returnQty),
+      sede: returnSede, person: showReturn.person, notes: returnNote,
+      operator: currentUser.name, date: new Date().toISOString(),
+    });
+    setShowReturn(null);
+    setSuccess("Devolución registrada");
+    setTimeout(() => setSuccess(""), 2000);
+  };
+
+  const openDelete = (loan) => {
+    setDeleteNote("");
+    setShowDelete(loan);
+  };
+
+  const handleDelete = async () => {
+    if (!deleteNote || !showDelete) return;
+    await addMovement({
+      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+      productId: showDelete.productId, type: "devolucion", qty: showDelete.qty,
+      sede: "Mariscal Cáceres", person: showDelete.person,
+      notes: `[ELIMINADO] ${deleteNote}`,
+      operator: currentUser.name, date: new Date().toISOString(),
+    });
+    setShowDelete(null);
+    setSuccess("Préstamo eliminado");
+    setTimeout(() => setSuccess(""), 2000);
+  };
+
+  const LBL = { fontSize: 11, color: C.textMuted, marginBottom: 6, display: "block", textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 };
 
   return (
     <div style={{ marginTop: 24 }}>
       <SectionTitle>Préstamos Pendientes</SectionTitle>
+
+      {success && (
+        <div style={{ padding: "12px 16px", borderRadius: 8, background: C.greenBg, color: C.green,
+          fontSize: 14, fontWeight: 600, marginBottom: 16, textAlign: "center" }}>{success}</div>
+      )}
+
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14, marginBottom: 20 }}>
         <Card style={{ padding: "18px 16px", textAlign: "center", borderLeft: `3px solid ${C.yellow}` }}>
           <div style={{ fontSize: 32, fontWeight: 600, color: C.yellow, fontFamily: FONT_NUM }}>{activeLoans.length}</div>
@@ -812,9 +919,16 @@ function LoansView({ products, movements }) {
           <div style={{ fontSize: 12, color: C.textMuted, fontWeight: 600, letterSpacing: 0.3, textTransform: "uppercase" }}>Unidades prestadas</div>
         </Card>
       </div>
-      <Select value={filterPerson} onChange={setFilterPerson} options={allPeople} placeholder="Filtrar por consultora" style={{ marginBottom: 16 }} />
+
+      <div style={{ position: "relative", marginBottom: 16 }}>
+        <div style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: C.textMuted }}><Icon name="search" size={16} /></div>
+        <Input value={search} onChange={setSearch} placeholder="Buscar por nombre de consultora..." style={{ paddingLeft: 40 }} />
+      </div>
+
       {filtered.length === 0 ? (
-        <div style={{ textAlign: "center", padding: 50, color: C.textMuted }}>{activeLoans.length === 0 ? "No hay préstamos pendientes" : "No hay préstamos para esta consultora"}</div>
+        <div style={{ textAlign: "center", padding: 50, color: C.textMuted }}>
+          {activeLoans.length === 0 ? "No hay préstamos pendientes" : "No se encontraron préstamos para esta consultora"}
+        </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           {filtered.map((l, i) => {
@@ -823,14 +937,26 @@ function LoansView({ products, movements }) {
             return (
               <Card key={i} style={{ padding: "16px 18px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div>
+                  <div style={{ flex: 1 }}>
                     <div style={{ fontWeight: 600, fontSize: 15, color: C.text }}>{prod?.name || "?"}</div>
-                    <div style={{ fontSize: 13, color: C.textMuted, marginTop: 3 }}>Prestado a <span style={{ color: C.gold, fontWeight: 600 }}>{l.person}</span></div>
-                  </div>
-                  <div style={{ textAlign: "right" }}>
-                    <Badge color={C.yellow} bg={C.yellowBg}>{l.qty} ud.</Badge>
-                    <div style={{ fontSize: 11, color: days > 14 ? C.red : C.textMuted, marginTop: 4, fontWeight: days > 14 ? 600 : 400 }}>
+                    <div style={{ fontSize: 13, color: C.textMuted, marginTop: 3 }}>
+                      Prestado a <span style={{ color: C.gold, fontWeight: 600 }}>{l.person}</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: days > 14 ? C.red : C.textMuted, marginTop: 2, fontWeight: days > 14 ? 600 : 400 }}>
                       {days > 14 ? `⚠ ${days} días` : `${days} días`}
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
+                    <Badge color={C.yellow} bg={C.yellowBg}>{l.qty} ud.</Badge>
+                    <div style={{ display: "flex", gap: 6 }}>
+                      <button onClick={() => openReturn(l)}
+                        style={{ background: C.greenBg, border: `1px solid ${C.green}33`, borderRadius: 6, padding: "5px 12px",
+                          color: C.green, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: FONT_BODY }}>Devolver</button>
+                      {canDelete && (
+                        <button onClick={() => openDelete(l)}
+                          style={{ background: C.redBg, border: `1px solid ${C.red}33`, borderRadius: 6, padding: "5px 12px",
+                            color: C.red, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: FONT_BODY }}>Eliminar</button>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -839,6 +965,50 @@ function LoansView({ products, movements }) {
           })}
         </div>
       )}
+
+      {/* Return Modal */}
+      <Modal open={showReturn !== null} onClose={() => setShowReturn(null)} title="Registrar Devolución">
+        {showReturn && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ padding: "12px 14px", borderRadius: 8, background: C.bg, border: `1px solid ${C.borderLight}` }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{products.find(p => p.id === showReturn.productId)?.name}</div>
+              <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>Prestado a {showReturn.person} · {showReturn.qty} ud.</div>
+            </div>
+            <div><label style={LBL}>Cantidad a devolver</label>
+              <Input type="number" value={returnQty} onChange={v => setReturnQty(v)} placeholder="Cantidad" /></div>
+            <div><label style={LBL}>Sede donde se devuelve</label>
+              <Select value={returnSede} onChange={setReturnSede} options={SEDES} placeholder="Seleccionar sede" /></div>
+            <div><label style={LBL}>Nota (opcional)</label>
+              <Input value={returnNote} onChange={setReturnNote} placeholder="Agregar nota..." /></div>
+            <div style={{ fontSize: 12, color: C.textMuted }}>Registrado por: <strong>{currentUser?.name}</strong> · {new Date().toLocaleDateString("es-PE")}</div>
+            <Btn onClick={handleReturn} disabled={!returnQty || !returnSede} style={{ width: "100%" }}>
+              <Icon name="check" size={16} /> Confirmar devolución
+            </Btn>
+          </div>
+        )}
+      </Modal>
+
+      {/* Delete Modal (admin/directora only) */}
+      <Modal open={showDelete !== null} onClose={() => setShowDelete(null)} title="Eliminar Préstamo">
+        {showDelete && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ padding: "12px 14px", borderRadius: 8, background: C.redBg, border: `1px solid ${C.red}22` }}>
+              <div style={{ fontSize: 13, color: C.red, fontWeight: 600 }}>Esto eliminará el préstamo sin registrar una devolución real.</div>
+              <div style={{ fontSize: 12, color: C.red, marginTop: 4, opacity: 0.8 }}>Se registrará como devolución con nota [ELIMINADO].</div>
+            </div>
+            <div style={{ padding: "12px 14px", borderRadius: 8, background: C.bg }}>
+              <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{products.find(p => p.id === showDelete.productId)?.name}</div>
+              <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>Prestado a {showDelete.person} · {showDelete.qty} ud.</div>
+            </div>
+            <div><label style={LBL}>Motivo de eliminación *</label>
+              <Input value={deleteNote} onChange={setDeleteNote} placeholder="Escribe el motivo..." /></div>
+            <div style={{ fontSize: 12, color: C.textMuted }}>Eliminado por: <strong>{currentUser?.name}</strong></div>
+            <Btn onClick={handleDelete} disabled={!deleteNote} variant="danger" style={{ width: "100%" }}>
+              Eliminar préstamo
+            </Btn>
+          </div>
+        )}
+      </Modal>
     </div>
   );
 }
@@ -924,7 +1094,7 @@ function AdminView({ products, people, operators, categories, currentUser, can,
   const [showEditOperator, setShowEditOperator] = useState(null);
   const [newProd, setNewProd] = useState({ name: "", category: "", code: "", price: "" });
   const [editProd, setEditProd] = useState({ name: "", category: "", code: "", price: "" });
-  const [newPerson, setNewPerson] = useState("");
+  const [newPerson, setNewPerson] = useState({ name: "", phone: "", address: "", dni: "", birthday: "" });
   const [newOperator, setNewOperator] = useState({ name: "", pin: "", role: "asistente" });
   const [editOp, setEditOp] = useState({ name: "", pin: "", role: "" });
   const [newCategory, setNewCategory] = useState("");
@@ -953,8 +1123,9 @@ function AdminView({ products, people, operators, categories, currentUser, can,
     await updateProduct({ ...p, active: !p.active });
   };
   const handleAddPerson = async () => {
-    if (!newPerson || people.includes(newPerson)) return;
-    await addConsultora(newPerson); setNewPerson(""); setShowAddPerson(false);
+    if (!newPerson.name || people.find(p => p.name === newPerson.name)) return;
+    await addConsultora(newPerson);
+    setNewPerson({ name: "", phone: "", address: "", dni: "", birthday: "" }); setShowAddPerson(false);
   };
   const handleRemovePerson = async (i) => { await removeConsultora(i); };
   const handleAddOperator = async () => {
@@ -1152,20 +1323,42 @@ function AdminView({ products, people, operators, categories, currentUser, can,
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              {people.map((p, i) => (
-                <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
+              {[...people].sort((a, b) => a.name.localeCompare(b.name, "es")).map((p) => {
+                const origIndex = people.findIndex(pp => pp.name === p.name);
+                return (
+                <div key={origIndex} style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
                   padding: "12px 14px", borderRadius: 8, background: C.white, border: `1px solid ${C.border}` }}>
-                  <span style={{ fontSize: 15, color: C.text }}>{p}</span>
-                  <button onClick={() => handleRemovePerson(i)}
+                  <div>
+                    <div style={{ fontSize: 15, color: C.text, fontWeight: 500 }}>{p.name}</div>
+                    <div style={{ fontSize: 11, color: C.textMuted, display: "flex", gap: 8, marginTop: 2, flexWrap: "wrap" }}>
+                      {p.phone && <span>📞 {p.phone}</span>}
+                      {p.dni && <span>DNI: {p.dni}</span>}
+                      {p.birthday && <span>🎂 {p.birthday}</span>}
+                      {p.address && <span>📍 {p.address}</span>}
+                    </div>
+                  </div>
+                  <button onClick={() => handleRemovePerson(origIndex)}
                     style={{ background: "none", border: "none", cursor: "pointer", color: C.red, fontSize: 12, fontFamily: FONT_BODY, fontWeight: 600 }}>Eliminar</button>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
           <Modal open={showAddPerson} onClose={() => setShowAddPerson(false)} title="Agregar Consultora">
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <Input value={newPerson} onChange={setNewPerson} placeholder="Nombre de la consultora" />
-              <Btn onClick={handleAddPerson} disabled={!newPerson} style={{ width: "100%" }}>Agregar</Btn>
+              <div><label style={LBL}>Nombre *</label>
+                <Input value={newPerson.name} onChange={v => setNewPerson({ ...newPerson, name: v })} placeholder="Nombre completo" /></div>
+              <div><label style={LBL}>Teléfono</label>
+                <Input value={newPerson.phone} onChange={v => setNewPerson({ ...newPerson, phone: v })} placeholder="Número de teléfono" /></div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div><label style={LBL}>DNI</label>
+                  <Input value={newPerson.dni} onChange={v => setNewPerson({ ...newPerson, dni: v })} placeholder="Número de DNI" /></div>
+                <div><label style={LBL}>Cumpleaños</label>
+                  <Input type="date" value={newPerson.birthday} onChange={v => setNewPerson({ ...newPerson, birthday: v })} /></div>
+              </div>
+              <div><label style={LBL}>Dirección</label>
+                <Input value={newPerson.address} onChange={v => setNewPerson({ ...newPerson, address: v })} placeholder="Dirección" /></div>
+              <Btn onClick={handleAddPerson} disabled={!newPerson.name} style={{ width: "100%", marginTop: 8 }}>Agregar consultora</Btn>
             </div>
           </Modal>
         </>
