@@ -313,8 +313,14 @@ export default function App() {
     }));
   }, [withSave]);
   const removeConsultora = useCallback(async (index) => {
-    // index is 0-based in our array, row in sheet is index+2 (1 header + 1-indexed)
     await withSave(() => gsWrite("removeConsultora", {}, `row=${index + 1}`));
+  }, [withSave]);
+  const updateConsultoraFn = useCallback(async (index, consultora) => {
+    await withSave(() => gsWrite("updateConsultora", {
+      Nombre: consultora.name, "Teléfono": consultora.phone || "",
+      "Dirección": consultora.address || "", DNI: consultora.dni || "",
+      "Cumpleaños": consultora.birthday || ""
+    }, `row=${index + 1}`));
   }, [withSave]);
 
   // ── Category operations ──
@@ -408,7 +414,7 @@ export default function App() {
         {page === "admin" && <AdminView products={products} people={people} operators={operators} categories={categories}
           currentUser={currentUser} can={can}
           updateProduct={updateProduct} addProduct={addProduct} bulkUpdateProducts={bulkUpdateProducts}
-          addConsultora={addConsultora} removeConsultora={removeConsultora}
+          addConsultora={addConsultora} removeConsultora={removeConsultora} updateConsultoraFn={updateConsultoraFn}
           addOperadora={addOperadora} updateOperadora={updateOperadora} removeOperadora={removeOperadora}
           addCategoria={addCategoria} updateCategoria={updateCategoria} removeCategoria={removeCategoria} />}
       </main>
@@ -1081,7 +1087,7 @@ function HistoryView({ products, movements }) {
 // ═══════════════════════════════════════════════
 function AdminView({ products, people, operators, categories, currentUser, can,
   updateProduct, addProduct, bulkUpdateProducts,
-  addConsultora, removeConsultora,
+  addConsultora, removeConsultora, updateConsultoraFn,
   addOperadora, updateOperadora, removeOperadora,
   addCategoria, updateCategoria, removeCategoria }) {
   const [tab, setTab] = useState("products");
@@ -1095,6 +1101,8 @@ function AdminView({ products, people, operators, categories, currentUser, can,
   const [newProd, setNewProd] = useState({ name: "", category: "", code: "", price: "" });
   const [editProd, setEditProd] = useState({ name: "", category: "", code: "", price: "" });
   const [newPerson, setNewPerson] = useState({ name: "", phone: "", address: "", dni: "", birthday: "" });
+  const [showEditPerson, setShowEditPerson] = useState(null);
+  const [editPerson, setEditPerson] = useState({ name: "", phone: "", address: "", dni: "", birthday: "" });
   const [newOperator, setNewOperator] = useState({ name: "", pin: "", role: "asistente" });
   const [editOp, setEditOp] = useState({ name: "", pin: "", role: "" });
   const [newCategory, setNewCategory] = useState("");
@@ -1128,6 +1136,15 @@ function AdminView({ products, people, operators, categories, currentUser, can,
     setNewPerson({ name: "", phone: "", address: "", dni: "", birthday: "" }); setShowAddPerson(false);
   };
   const handleRemovePerson = async (i) => { await removeConsultora(i); };
+  const openEditPerson = (p, origIndex) => {
+    setEditPerson({ name: p.name, phone: p.phone || "", address: p.address || "", dni: p.dni || "", birthday: p.birthday || "" });
+    setShowEditPerson(origIndex);
+  };
+  const handleEditPerson = async () => {
+    if (!editPerson.name) return;
+    await updateConsultoraFn(showEditPerson, editPerson);
+    setShowEditPerson(null);
+  };
   const handleAddOperator = async () => {
     if (!newOperator.name || !newOperator.pin || newOperator.pin.length < 4) return;
     if (operators.find(o => o.name === newOperator.name)) return;
@@ -1337,8 +1354,12 @@ function AdminView({ products, people, operators, categories, currentUser, can,
                       {p.address && <span>📍 {p.address}</span>}
                     </div>
                   </div>
-                  <button onClick={() => handleRemovePerson(origIndex)}
-                    style={{ background: "none", border: "none", cursor: "pointer", color: C.red, fontSize: 12, fontFamily: FONT_BODY, fontWeight: 600 }}>Eliminar</button>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button onClick={() => openEditPerson(p, origIndex)}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: C.gold, fontSize: 12, fontFamily: FONT_BODY, fontWeight: 600 }}>Editar</button>
+                    <button onClick={() => handleRemovePerson(origIndex)}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: C.red, fontSize: 12, fontFamily: FONT_BODY, fontWeight: 600 }}>Eliminar</button>
+                  </div>
                 </div>
                 );
               })}
@@ -1359,6 +1380,23 @@ function AdminView({ products, people, operators, categories, currentUser, can,
               <div><label style={LBL}>Dirección</label>
                 <Input value={newPerson.address} onChange={v => setNewPerson({ ...newPerson, address: v })} placeholder="Dirección" /></div>
               <Btn onClick={handleAddPerson} disabled={!newPerson.name} style={{ width: "100%", marginTop: 8 }}>Agregar consultora</Btn>
+            </div>
+          </Modal>
+          <Modal open={showEditPerson !== null} onClose={() => setShowEditPerson(null)} title="Editar Consultora">
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div><label style={LBL}>Nombre *</label>
+                <Input value={editPerson.name} onChange={v => setEditPerson({ ...editPerson, name: v })} placeholder="Nombre completo" /></div>
+              <div><label style={LBL}>Teléfono</label>
+                <Input value={editPerson.phone} onChange={v => setEditPerson({ ...editPerson, phone: v })} placeholder="Número de teléfono" /></div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+                <div><label style={LBL}>DNI</label>
+                  <Input value={editPerson.dni} onChange={v => setEditPerson({ ...editPerson, dni: v })} placeholder="Número de DNI" /></div>
+                <div><label style={LBL}>Cumpleaños</label>
+                  <Input type="date" value={editPerson.birthday} onChange={v => setEditPerson({ ...editPerson, birthday: v })} /></div>
+              </div>
+              <div><label style={LBL}>Dirección</label>
+                <Input value={editPerson.address} onChange={v => setEditPerson({ ...editPerson, address: v })} placeholder="Dirección" /></div>
+              <Btn onClick={handleEditPerson} disabled={!editPerson.name} style={{ width: "100%", marginTop: 8 }}>Guardar cambios</Btn>
             </div>
           </Modal>
         </>
