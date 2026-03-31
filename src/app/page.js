@@ -17,13 +17,16 @@ const DEFAULT_CATEGORIES = [
   "Maquillaje", "Total Block"
 ];
 const MOVE_TYPES = [
-  { id: "compra", label: "Compra (ingreso)", icon: "📦", dir: 1, color: "#2d7a4f" },
-  { id: "venta", label: "Venta (salida)", icon: "💰", dir: -1, color: "#b5485f" },
-  { id: "prestamo", label: "Préstamo (salida)", icon: "🤝", dir: -1, color: "#9a6c3b" },
-  { id: "devolucion", label: "Devolución préstamo", icon: "↩️", dir: 1, color: "#2d7a4f" },
-  { id: "traslado", label: "Traslado entre sedes", icon: "🚚", dir: 0, color: "#4a6fa5" },
-  { id: "ajuste_pos", label: "Ajuste positivo", icon: "➕", dir: 1, color: "#2d7a4f" },
-  { id: "ajuste_neg", label: "Ajuste negativo", icon: "➖", dir: -1, color: "#b5485f" },
+  { id: "compra", label: "Compra de stock", icon: "📦", dir: 1, color: "#2d7a4f", group: "ingreso" },
+  { id: "devolucion", label: "Devolución de préstamo", icon: "↩️", dir: 1, color: "#2d7a4f", group: "ingreso" },
+  { id: "traslado_in", label: "Traslado entre sedes", icon: "🚚", dir: 0, color: "#4a6fa5", group: "ingreso" },
+  { id: "venta", label: "Venta", icon: "💰", dir: -1, color: "#b5485f", group: "egreso" },
+  { id: "prestamo", label: "Préstamo de producto", icon: "🤝", dir: -1, color: "#9a6c3b", group: "egreso" },
+  { id: "traslado_out", label: "Traslado entre sedes", icon: "🚚", dir: 0, color: "#4a6fa5", group: "egreso" },
+  // Legacy types for backwards compatibility with existing data
+  { id: "traslado", label: "Traslado", icon: "🚚", dir: 0, color: "#4a6fa5", group: "_legacy" },
+  { id: "ajuste_pos", label: "Ajuste positivo", icon: "➕", dir: 1, color: "#2d7a4f", group: "_legacy" },
+  { id: "ajuste_neg", label: "Ajuste negativo", icon: "➖", dir: -1, color: "#b5485f", group: "_legacy" },
 ];
 
 const INITIAL_RAW = [[1,"Adrenaline","Fragancias Damas","245","145",0,0],[2,"Adrenaline Alegria","Fragancias Damas","","",2,0],[3,"Adrenalina All","Fragancias Damas","","",0,0],[4,"A La Vida","Fragancias Damas","","",1,0],[5,"Aires Del Amazonas","Fragancias Damas","","",0,0],[6,"Aires Del Los Andes","Fragancias Damas","","",1,0],[7,"Aires Del Caribe","Fragancias Damas","","",0,0],[8,"Ccori","Fragancias Damas","2035","",3,0],[9,"Ccori Rose","Fragancias Damas","","",2,0],[10,"Ccori Cristal","Fragancias Damas","","",0,0],[11,"Ccori Cristal Rose","Fragancias Damas","","",1,0],[12,"Cielo","Fragancias Damas","2211","179",2,0],[13,"Cielo En Rosa","Fragancias Damas","2211","179",2,0],[14,"Dulce Amistad","Fragancias Damas","2182","145",1,0],[15,"Dulce Vanidad","Fragancias Damas","","",2,0],[16,"Di Que Si","Fragancias Damas","","",1,0],[17,"Di Que Si Caramel","Fragancias Damas","","",1,0],[18,"Gaia Elixir","Fragancias Damas","","",2,0],[19,"Gaia","Fragancias Damas","","",1,0],[20,"Icono","Fragancias Damas","","",1,0],[21,"Icono Intense","Fragancias Damas","","",1,0],[22,"Liberatta","Fragancias Damas","236","239",1,0],[23,"Liberatta Noire","Fragancias Damas","","",0,0],[24,"Liberatta Viva","Fragancias Damas","","",0,0],[25,"Pasion","Fragancias Damas","","",1,0],[26,"Temptation","Fragancias Damas","79946","",3,0],[27,"Temptatacion Mystic","Fragancias Damas","","",1,0],[28,"Osadia","Fragancias Damas","","",0,0],[29,"Osadia Infinita","Fragancias Damas","","",1,0],[30,"Xiss","Fragancias Damas","2214","99",3,0],[31,"Xiss Active","Fragancias Damas","2214","99",1,0],[32,"Mix & Chic Peach Tonic","Fragancias Damas","","",1,0],[33,"Mix & Chic Apple Tonic","Fragancias Damas","","",2,0],[34,"Mix & Chic Berry Tonic","Fragancias Damas","","",2,0],[35,"Mix & Chic Mango Tonico","Fragancias Damas","","",2,0],[36,"L'Essence Violeta Salvaje","Fragancias Damas","","",2,0],[37,"L'Essence Cerezo Silvestre","Fragancias Damas","","",1,0],[38,"L'Essence Orquidea Exotico","Fragancias Damas","","",1,0],[39,"L'Essence Mimosa Radiante","Fragancias Damas","","",1,0],[40,"Soy Sexi","Fragancias Damas","","",1,0],[41,"Soy Glow","Fragancias Damas","","",2,0],[42,"Soy Latina","Fragancias Damas","","",1,0],[43,"Soy Poderosa","Fragancias Damas","","",2,0],[44,"Soy Unica","Fragancias Damas","","",2,0],[45,"Arom","Fragancias Varones","2194","169",2,0],[46,"Arom Absolut","Fragancias Varones","210","192",1,0],[47,"Arom Element","Fragancias Varones","2177","192",2,0],[48,"Adrenaline","Fragancias Varones","245","145",1,0],[49,"Adrenaline All","Fragancias Varones","","",0,0],[50,"Dendur","Fragancias Varones","206","192",2,0],[51,"Dendur Destiny","Fragancias Varones","2201","192",3,0],[52,"Evolution","Fragancias Varones","","",1,0],[53,"Indomito","Fragancias Varones","","",1,0],[54,"Jaque","Fragancias Varones","203","220",2,0],[55,"Musk","Fragancias Varones","2218","",2,0],[56,"Ohm","Fragancias Varones","201","230",3,0],[57,"Ohm Plateado","Fragancias Varones","","",1,0],[58,"Ohm Black","Fragancias Varones","201","230",1,0],[59,"Ohm Soul","Fragancias Varones","","",2,0],[60,"Osadia","Fragancias Varones","","",2,0],[61,"Paralel 43°","Fragancias Varones","","",3,0],[62,"Savour","Fragancias Varones","","",0,0],[63,"Solo","Fragancias Varones","","",2,0],[64,"Solo Elixir","Fragancias Varones","","",1,0],[65,"Selecto","Fragancias Varones","2161","",1,0],[66,"Temptation","Fragancias Varones","","",1,0],[67,"Temptation Black","Fragancias Varones","2192","202",1,0],[68,"Xool","Fragancias Varones","221","",3,0],[69,"Zentro","Fragancias Varones","212","220",2,0],[70,"Ccori","Desodorantes Damas","","",2,0],[71,"Ccori Rose","Desodorantes Damas","","",3,0],[72,"Ccori Cristal","Desodorantes Damas","","",0,0],[73,"Cielo","Desodorantes Damas","","",4,0],[74,"Gaia","Desodorantes Damas","","",4,0],[75,"Osadia","Desodorantes Damas","","",1,0],[76,"Temptation","Desodorantes Damas","","",3,0],[77,"Efective Original","Desodorantes Damas","","",4,0],[78,"Efective Brisa Floral","Desodorantes Damas","","",3,0],[79,"Efective Aclarante","Desodorantes Damas","","",3,0],[80,"Efective Clinical","Desodorantes Damas","","",3,0],[81,"Efective Sensitive","Desodorantes Damas","","",3,0],[82,"Efective Aerosol Clinical","Desodorantes Damas","","",2,0],[83,"Efective Aerosol Aclarante","Desodorantes Damas","","",2,0],[84,"Efective Aerosol Original","Desodorantes Damas","","",2,0],[85,"Arom","Desodorantes Varones","","",3,0],[86,"Arom Absolut","Desodorantes Varones","","",0,0],[87,"Arom Element","Desodorantes Varones","","",0,0],[88,"Dendur Destiny","Desodorantes Varones","","",2,0],[89,"Evolucion","Desodorantes Varones","","",2,0],[90,"Foco Discover","Desodorantes Varones","","",2,0],[91,"Temptation","Desodorantes Varones","","",1,0],[92,"Solo","Desodorantes Varones","","",2,0],[93,"Solo Elixir","Desodorantes Varones","","",1,0],[94,"Ohm","Desodorantes Varones","","",2,0],[95,"Ohm Black","Desodorantes Varones","","",3,0],[96,"Ohm Soul","Desodorantes Varones","","",2,0],[97,"Zentro","Desodorantes Varones","","",1,0],[98,"Gel Hidratante","Línea Vivo","","",2,0],[99,"Desodorante","Línea Vivo","","",1,0],[100,"Jabon Facial Gel","Línea Vivo","","",1,0],[101,"Jabon en Barra","Línea Vivo","","",1,0],[102,"Shampoo","Línea Vivo","","",3,0],[103,"Aqua Fix Gel Limpiador","Línea Tratamiento","","",4,0],[104,"Aqua Fix Hidratante Dia","Línea Tratamiento","","",2,0],[105,"Aqua Fix Gel Noche","Línea Tratamiento","","",1,0],[106,"Elixir De Vida Gel Limpiador","Línea Tratamiento","","",2,0],[107,"Elixir De Vida Crema Hidratante","Línea Tratamiento","","",2,0],[108,"Elixir De Vida Crema Nutritiva","Línea Tratamiento","","",1,0],[109,"Elixir De Vida Crema para Ojos","Línea Tratamiento","","",2,0],[110,"Extracto Divino Espuma Limpiadora","Línea Tratamiento","","",2,0],[111,"Extracto Divino Crema Hidratante","Línea Tratamiento","","",1,0],[112,"Extracto Divino Crema Nutritiva","Línea Tratamiento","","",1,0],[113,"Extracto Divino Crema para Ojos","Línea Tratamiento","","",2,0],[114,"Extracto Divino Crema Cuello y Escote","Línea Tratamiento","","",1,0],[115,"Pigment Control Limpiador","Línea Tratamiento","","",2,0],[116,"Pigment Control Crema Hidratante","Línea Tratamiento","","",2,0],[117,"Perfect Balance Limpiador","Línea Tratamiento","","",1,0],[118,"Perfect Balance Hidratante Matificante","Línea Tratamiento","","",1,0],[119,"Perfect Balance Gel Focalizado","Línea Tratamiento","","",1,0],[120,"Sensi Derm Leche Limpiadora","Línea Tratamiento","","",1,0],[121,"Sensi Derm Crema Hidratante","Línea Tratamiento","","",1,0],[122,"Suero Antigrasa Ácido Salicílico","Línea Tratamiento","","",2,0],[123,"Suero Antioxidante Vitamina C","Línea Tratamiento","","",2,0],[124,"Suero Antiedad Óleo Reparador","Línea Tratamiento","","",1,0],[125,"Suero Antimanchas Niacinamida","Línea Tratamiento","","",2,0],[126,"Suero Hidratante Ácido Hialurónico","Línea Tratamiento","","",3,0],[127,"Suero Antiarrugas Bakuchiol","Línea Tratamiento","","",2,0],[128,"Mascarilla Exfoliante Purificante","Línea Tratamiento","","",1,0],[129,"Mascarilla Antigrasa Detoxificante","Línea Tratamiento","","",3,0],[130,"Desmaquillador Doble Fase","Línea Tratamiento","","",1,0],[131,"Desmaquillador Agua Micelar","Línea Tratamiento","","",1,0],[132,"Desmaquillador Agua Micelar Piel Sensible","Línea Tratamiento","","",2,0],[133,"Desmaquillador Gel","Línea Tratamiento","","",1,0],[134,"Totalist Aguacate Pote","Línea Tratamiento","","",3,0],[135,"Totalist Jalea Real Pote","Línea Tratamiento","","",2,0],[136,"Totalist Concha de Nácar Pote","Línea Tratamiento","","",3,0],[137,"Totalist Concha de Nácar Tubo","Línea Tratamiento","","",1,0],[138,"Totalist Suero Aguacate","Línea Tratamiento","","",1,0],[139,"Totalist Suero Jalea Real","Línea Tratamiento","","",1,0],[140,"Blum Shampoo Reparación Intensiva","Línea Tratamiento","","",1,0],[141,"Blum Shampoo Hidratación Extrema","Línea Tratamiento","","",1,0],[142,"Blum Shampoo Protección Total","Línea Tratamiento","","",1,0],[143,"Blum Shampoo Anticaspa","Línea Tratamiento","","",1,0],[144,"Blum Acondicionador Reparación Intensiva","Línea Tratamiento","","",1,0],[145,"Blum Acondicionador Hidratación Extrema","Línea Tratamiento","","",1,0],[146,"Blum Acondicionador Protección Total","Línea Tratamiento","","",2,0],[147,"Blum Mascarilla Reparadora","Línea Tratamiento","","",2,0],[148,"Blum Suero Reparador De Puntas","Línea Tratamiento","","",1,0],[149,"Blum Crema Moldeadora Rizos","Línea Tratamiento","","",0,0],[150,"Blum Gel Fijador Rizos","Línea Tratamiento","","",1,0],[151,"Bio Milk Loción Corporal Original","Línea Tratamiento","","",0,0],[152,"Bio Milk Loción Mora Arándano","Línea Tratamiento","","",1,0],[153,"Bio Milk Loción Fresa Frambuesa","Línea Tratamiento","","",3,0],[154,"Bio Milk Loción Leche Vegetal","Línea Tratamiento","","",5,0],[155,"Bio Milk Loción Sensi Derm","Línea Tratamiento","","",2,0],[156,"Bio Milk Loción Soy Única","Línea Tratamiento","","",1,0],[157,"Bio Milk Jabón Barra Original Set","Línea Tratamiento","","",1,0],[158,"Bio Milk Jabón Barra Mora Arándano","Línea Tratamiento","","",1,0],[159,"Bio Milk Jabón Barra Fresa Frambuesa","Línea Tratamiento","","",2,0],[160,"Body Spa Uña De Gato Loción","Línea Tratamiento","","",1,0],[161,"Body Spa Uña De Gato Manteca","Línea Tratamiento","","",1,0],[162,"Body Spa Uña De Gato Exfoliante","Línea Tratamiento","","",4,0],[163,"Body Spa Uña De Gato Crema Manos","Línea Tratamiento","","",6,0],[164,"Body Spa Cacao Loción","Línea Tratamiento","","",2,0],[165,"Body Spa Cacao Crema Manos","Línea Tratamiento","","",4,0],[166,"Body Spa Cacao Manteca","Línea Tratamiento","","",0,0],[167,"Body Spa Cacao Exfoliante","Línea Tratamiento","","",0,0],[168,"Petit Pom Pom Shampoo","Línea Tratamiento","","",1,0],[169,"Petit Pom Pom Colonia","Línea Tratamiento","","",1,0],[170,"Petit Pom Pom Jabón Barra","Línea Tratamiento","","",3,0],[171,"Petit Pom Pom Jabón Líquido","Línea Tratamiento","","",2,0],[172,"Petit Pom Pom Loción","Línea Tratamiento","","",2,0],[173,"Body Spa Kids Shampoo","Línea Tratamiento","","",2,0],[174,"Body Spa Kids Acondicionador","Línea Tratamiento","","",2,0],[175,"Body Spa Kids Colonia Niño","Línea Tratamiento","","",1,0],[176,"Body Spa Kids Colonia Niña","Línea Tratamiento","","",2,0],[177,"Eau Vitale Colonia Lavanda","Línea Tratamiento","","",3,0],[178,"Eau Vitale Colonia Té Verde","Línea Tratamiento","","",2,0],[179,"Eau Vitale Colonia Flor Naranjo","Línea Tratamiento","","",4,0],[180,"Eau Vitale Colonia Rosas","Línea Tratamiento","","",3,0],[181,"Eau Vitale Jabón Lavanda","Línea Tratamiento","","",2,0],[182,"Eau Vitale Jabón Té Verde","Línea Tratamiento","","",1,0],[183,"Eau Vitale Jabón Flor Naranjo","Línea Tratamiento","","",1,0],[184,"Eau Vitale Jabón Rosas","Línea Tratamiento","","",1,0],[185,"Loción De Seda Ámbar y Miel","Línea Tratamiento","","",1,0],[186,"Loción De Seda Lima y Jazmín","Línea Tratamiento","","",1,0],[187,"Loción De Seda Rosa Musk","Línea Tratamiento","","",0,0],[188,"Loción De Seda Magnolia y Vainilla","Línea Tratamiento","","",0,0],[189,"Loción De Seda Perlas y Rosas","Línea Tratamiento","","",1,0],[190,"Loción Perfumada Ccori","Línea Tratamiento","","",0,0],[191,"Loción Perfumada Ccori Rose","Línea Tratamiento","","",1,0],[192,"Loción Perfumada Gaia","Línea Tratamiento","","",1,0],[193,"Loción Perfumada Ícono","Línea Tratamiento","","",1,0],[194,"Loción Perfumada Osadía Infinita","Línea Tratamiento","","",1,0],[195,"Loción Perfumada Temptation Mystic","Línea Tratamiento","","",0,0],[196,"Loción Perfumada Cielo En Rosa","Línea Tratamiento","","",2,0],[197,"Jabón Barra Cielo","Línea Tratamiento","","",2,0],[198,"Jabón Barra Ccori Cristal Rose","Línea Tratamiento","","",1,0],[199,"Jabón Barra Temptation Dama","Línea Tratamiento","","",1,0],[200,"Jabón Barra Temptation Hombre","Línea Tratamiento","","",2,0],[201,"Jabón Barra Solo","Línea Tratamiento","","",1,0],[202,"Jabón Barra Ohm","Línea Tratamiento","","",1,0],[203,"Jabón Barra Osadía","Línea Tratamiento","","",1,0],[204,"Gel After Shave Ohm","Línea Tratamiento","","",0,0],[205,"Gel de Baño Ohm Soul","Línea Tratamiento","","",0,0],[206,"Gel de Baño Temptation Black","Línea Tratamiento","","",0,0],[207,"BB Cream Antiedad Claro","Línea Tratamiento","","",1,0],[208,"BB Cream Antiedad Mediano","Línea Tratamiento","","",1,0],[209,"BB Cream Matificante Claro","Línea Tratamiento","","",2,0],[210,"BB Cream Matificante Mediano","Línea Tratamiento","","",2,0],[211,"BB Cream Hidratante Mediano","Línea Tratamiento","","",2,0],[212,"BB Cream Hidratante Claro","Línea Tratamiento","","",1,0],[213,"BB Lips Honey","Línea Tratamiento","","",3,0],[214,"BB Lips Natural","Línea Tratamiento","","",3,0],[215,"BB Lips Natural Pink","Línea Tratamiento","","",0,0],[216,"Base de Maquillaje Antiedad","Maquillaje","","",3,0],[217,"Base de Maquillaje Hidratante","Maquillaje","","",0,0],[218,"Base de Maquillaje Matificante","Maquillaje","","",5,0],[219,"Barra Multiuso YA","Maquillaje","","",1,0],[220,"Barra Multifuncional","Maquillaje","","",0,0],[221,"Corrector en Barra","Maquillaje","","",0,0],[222,"Corrector Líquido Antiedad","Maquillaje","","",0,0],[223,"Delineador Tatto","Maquillaje","","",0,0],[224,"Delineador Punta Inteligente","Maquillaje","","",1,0],[225,"Delineador Punta Pincel YA","Maquillaje","","",4,0],[226,"Delineador Perfilador Cejas Marrón","Maquillaje","","",1,0],[227,"Delineador Retráctil Cejas","Maquillaje","","",4,0],[228,"Delineador P/Agua Ojos","Maquillaje","","",5,0],[229,"Delineador en Gel","Maquillaje","","",0,0],[230,"Delineador Lápiz YA","Maquillaje","","",14,0],[231,"Duo de Cejas","Maquillaje","","",2,0],[232,"Delineador de Labios","Maquillaje","","",2,0],[233,"Esmalte de Uñas","Maquillaje","","",0,0],[234,"Esmalte Brillo Secante","Maquillaje","","",2,0],[235,"Esmalte Base Brillo Efecto Gel","Maquillaje","","",1,0],[236,"Esmalte Base Fortalecedor","Maquillaje","","",1,0],[237,"Labial Hydralip Ámbar Rosa Toscana","Maquillaje","","",1,0],[238,"Hydralip Líquido Mate","Maquillaje","","",3,0],[239,"Hydralip Líquido Satinado","Maquillaje","","",1,0],[240,"Labial Mate Barra YA Cereza","Maquillaje","","",1,0],[241,"Polvo Suelto","Maquillaje","","",0,0],[242,"Paleta Sombras YA","Maquillaje","","",0,0],[243,"Paleta Multifuncional","Maquillaje","","",1,0],[244,"Polvos YA","Maquillaje","","",3,0],[245,"Primer Serum","Maquillaje","","",2,0],[246,"Polvo Full Powder Tono 2","Maquillaje","","",1,0],[247,"Polvo Compacto Elixir","Maquillaje","","",2,0],[248,"Rímel XL","Maquillaje","","",3,0],[249,"Rímel Ultra Resist","Maquillaje","","",5,0],[250,"Rímel Multibenefit","Maquillaje","","",0,0],[251,"Rímel YA","Maquillaje","","",0,0],[252,"Rímel Crece Extreme P/Agua","Maquillaje","","",0,0],[253,"Rímel Crece Extreme Normal","Maquillaje","","",1,0],[254,"Rubor Compacto","Maquillaje","","",3,0],[255,"Spray Fijador Maquillaje","Maquillaje","","",2,0],[256,"Bloqueador Compacto Mediano 1","Total Block","","",3,0],[257,"Bloqueador Compacto Mediano 2","Total Block","","",1,0],[258,"Bloqueador Compacto Claro","Total Block","","",1,0],[259,"Bloqueador Compacto Repuesto Med 1","Total Block","","",1,0],[260,"Bloqueador Compacto Repuesto Med 2","Total Block","","",0,0],[261,"Bloqueador Compacto Repuesto Claro","Total Block","","",3,0],[262,"Bloqueador Compacto Mineral","Total Block","","",3,0],[263,"Bloqueador Total Block 80g","Total Block","","",6,0],[264,"Bloqueador Total Block Jumbo","Total Block","","",4,0],[265,"Bloqueador Sport","Total Block","","",3,0],[266,"Bloqueador Kids","Total Block","","",4,0],[267,"Bloqueador Dermafusión Normal","Total Block","","",1,0],[268,"Bloqueador Dermafusión Color","Total Block","","",1,0],[269,"Bloqueador Gel Velvet","Total Block","","",2,0],[270,"Bloqueador Matt Color","Total Block","","",2,0],[271,"Bloqueador Matificante","Total Block","","",4,0],[272,"Bloqueador Mineral","Total Block","","",2,0],[273,"Bloqueador Bifásico","Total Block","","",2,0],[274,"Repelente Total Block","Total Block","","",3,0]];
@@ -74,9 +77,9 @@ function parseProducts(rows) {
 function parseMovements(rows) {
   return rows.map(r => ({
     id: r.ID || "", productId: Number(r["Producto ID"]) || 0, type: r.Tipo || "",
-    qty: Number(r.Cantidad) || 0, sede: r.Sede || undefined,
-    sedeFrom: r["Sede Origen"] || undefined, sedeTo: r["Sede Destino"] || undefined,
-    person: r.Consultora || undefined, notes: r.Notas || "",
+    qty: Math.abs(Number(r.Cantidad)) || 0, sede: r.Sede || "",
+    sedeFrom: r["Sede Origen"] || "", sedeTo: r["Sede Destino"] || "",
+    person: r.Consultora || "", notes: r.Notas || "",
     operator: r.Operadora || "", date: r.Fecha || "", _row: r._row
   }));
 }
@@ -610,7 +613,7 @@ function StockView({ products, movements, categories }) {
       if (!stock[m.productId]) return;
       const type = MOVE_TYPES.find(t => t.id === m.type);
       if (!type) return;
-      if (m.type === "traslado") {
+      if (m.type === "traslado" || m.type === "traslado_in" || m.type === "traslado_out") {
         if (m.sedeFrom === "Mariscal Cáceres") { stock[m.productId].mc -= m.qty; stock[m.productId].sa += m.qty; }
         else { stock[m.productId].sa -= m.qty; stock[m.productId].mc += m.qty; }
       } else {
@@ -715,6 +718,7 @@ function StockView({ products, movements, categories }) {
 // MOVE VIEW
 // ═══════════════════════════════════════════════
 function MoveView({ products, people, movements, user, addMovement }) {
+  const [direction, setDirection] = useState(""); // "ingreso" or "egreso"
   const [type, setType] = useState("");
   const [productId, setProductId] = useState("");
   const [qty, setQty] = useState("");
@@ -734,26 +738,34 @@ function MoveView({ products, people, movements, user, addMovement }) {
 
   const moveType = MOVE_TYPES.find(t => t.id === type);
   const needsPerson = type === "prestamo" || type === "devolucion";
-  const isTraslado = type === "traslado";
+  const isTraslado = type === "traslado_in" || type === "traslado_out";
+  const availableTypes = MOVE_TYPES.filter(t => t.group === direction);
+
+  const resetForm = () => {
+    setDirection(""); setType(""); setProductId(""); setQty(""); setSede("");
+    setSedeFrom(""); setSedeTo(""); setPerson(""); setNotes(""); setProductSearch("");
+  };
 
   const handleSubmit = async () => {
-    if (!type || !productId || !qty || (!isTraslado && !sede) || (isTraslado && (!sedeFrom || !sedeTo))) return;
+    const parsedQty = Math.abs(parseInt(qty));
+    if (!type || !productId || !parsedQty || parsedQty <= 0 || isNaN(parsedQty)) return;
+    if (!isTraslado && !sede) return;
+    if (isTraslado && (!sedeFrom || !sedeTo)) return;
     if (needsPerson && !person) return;
     const movement = {
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-      productId: parseInt(productId), type, qty: parseInt(qty),
-      sede: isTraslado ? undefined : sede,
-      sedeFrom: isTraslado ? sedeFrom : undefined, sedeTo: isTraslado ? sedeTo : undefined,
-      person: needsPerson ? person : undefined, notes, operator: user,
+      productId: parseInt(productId), type, qty: parsedQty,
+      sede: isTraslado ? "" : sede,
+      sedeFrom: isTraslado ? sedeFrom : "", sedeTo: isTraslado ? sedeTo : "",
+      person: needsPerson ? person : "", notes, operator: user,
       date: new Date().toISOString(),
     };
     await addMovement(movement);
     setSuccess(true);
-    setTimeout(() => {
-      setSuccess(false); setType(""); setProductId(""); setQty(""); setSede("");
-      setSedeFrom(""); setSedeTo(""); setPerson(""); setNotes(""); setProductSearch("");
-    }, 1500);
+    setTimeout(() => { setSuccess(false); resetForm(); }, 1500);
   };
+
+  const LBL = { fontSize: 11, color: C.textMuted, display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 };
 
   if (success) return (
     <div style={{ textAlign: "center", padding: "80px 20px", marginTop: 24 }}>
@@ -768,25 +780,52 @@ function MoveView({ products, people, movements, user, addMovement }) {
   return (
     <div style={{ marginTop: 24 }}>
       <SectionTitle>Registrar Movimiento</SectionTitle>
+
+      {/* Step 1: Ingreso or Egreso */}
       <Card style={{ marginBottom: 16 }}>
-        <label style={{ fontSize: 11, color: C.textMuted, display: "block", marginBottom: 10, textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 }}>Tipo de movimiento</label>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 8 }}>
-          {MOVE_TYPES.map(t => (
-            <button key={t.id} onClick={() => setType(t.id)}
-              style={{ padding: "14px 12px", borderRadius: 8, border: `1.5px solid ${type === t.id ? C.gold : C.border}`,
-                background: type === t.id ? C.goldBg : C.white, cursor: "pointer",
-                textAlign: "left", fontFamily: FONT_BODY, transition: "all 0.15s" }}>
-              <div style={{ fontSize: 18 }}>{t.icon}</div>
-              <div style={{ fontSize: 13, fontWeight: 600, color: type === t.id ? C.gold : C.text, marginTop: 4 }}>{t.label}</div>
+        <label style={LBL}>Dirección</label>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {[
+            { id: "ingreso", label: "Ingreso", icon: "📥", desc: "Entra producto al stock", color: C.green },
+            { id: "egreso", label: "Egreso", icon: "📤", desc: "Sale producto del stock", color: C.red },
+          ].map(d => (
+            <button key={d.id} onClick={() => { setDirection(d.id); setType(""); }}
+              style={{ padding: "16px 14px", borderRadius: 10, border: `2px solid ${direction === d.id ? d.color : C.border}`,
+                background: direction === d.id ? d.color + "0a" : C.white, cursor: "pointer",
+                textAlign: "center", fontFamily: FONT_BODY, transition: "all 0.15s" }}>
+              <div style={{ fontSize: 24 }}>{d.icon}</div>
+              <div style={{ fontSize: 15, fontWeight: 700, color: direction === d.id ? d.color : C.text, marginTop: 6 }}>{d.label}</div>
+              <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>{d.desc}</div>
             </button>
           ))}
         </div>
       </Card>
+
+      {/* Step 2: Type (filtered by direction) */}
+      {direction && (
+        <Card style={{ marginBottom: 16 }}>
+          <label style={LBL}>Motivo</label>
+          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+            {availableTypes.map(t => (
+              <button key={t.id} onClick={() => setType(t.id)}
+                style={{ padding: "12px 14px", borderRadius: 8, border: `1.5px solid ${type === t.id ? C.gold : C.border}`,
+                  background: type === t.id ? C.goldBg : C.white, cursor: "pointer",
+                  textAlign: "left", fontFamily: FONT_BODY, transition: "all 0.15s",
+                  display: "flex", alignItems: "center", gap: 10 }}>
+                <span style={{ fontSize: 18 }}>{t.icon}</span>
+                <span style={{ fontSize: 14, fontWeight: 600, color: type === t.id ? C.gold : C.text }}>{t.label}</span>
+              </button>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {/* Step 3: Details */}
       {type && (
         <Card style={{ marginBottom: 16 }}>
           <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
             <div>
-              <label style={{ fontSize: 11, color: C.textMuted, display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 }}>Producto</label>
+              <label style={LBL}>Producto</label>
               <Input value={productSearch} onChange={s => { setProductSearch(s); setProductId(""); }} placeholder="Buscar producto..." />
               {productSearch && !productId && (
                 <div style={{ maxHeight: 200, overflowY: "auto", border: `1px solid ${C.border}`, borderRadius: 8, marginTop: 4, background: C.white, boxShadow: C.shadowHover }}>
@@ -805,26 +844,26 @@ function MoveView({ products, people, movements, user, addMovement }) {
               {productId && <div style={{ marginTop: 6, fontSize: 12, color: C.green, display: "flex", alignItems: "center", gap: 4 }}><Icon name="check" size={14} /> Seleccionado</div>}
             </div>
             <div>
-              <label style={{ fontSize: 11, color: C.textMuted, display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 }}>Cantidad</label>
-              <Input type="number" value={qty} onChange={setQty} placeholder="Cantidad" />
+              <label style={LBL}>Cantidad</label>
+              <Input value={qty} onChange={v => setQty(v.replace(/[^0-9]/g, ""))} placeholder="Cantidad" />
             </div>
             {isTraslado ? (
               <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 8, alignItems: "end" }}>
-                <div><label style={{ fontSize: 11, color: C.textMuted, display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 }}>Origen</label>
+                <div><label style={LBL}>Sede origen</label>
                   <Select value={sedeFrom} onChange={setSedeFrom} options={SEDES} placeholder="Desde..." /></div>
                 <div style={{ color: C.goldMuted, paddingBottom: 14, fontSize: 18 }}>→</div>
-                <div><label style={{ fontSize: 11, color: C.textMuted, display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 }}>Destino</label>
+                <div><label style={LBL}>Sede destino</label>
                   <Select value={sedeTo} onChange={setSedeTo} options={SEDES.filter(s => s !== sedeFrom)} placeholder="Hacia..." /></div>
               </div>
             ) : (
-              <div><label style={{ fontSize: 11, color: C.textMuted, display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 }}>Sede</label>
+              <div><label style={LBL}>Sede</label>
                 <Select value={sede} onChange={setSede} options={SEDES} placeholder="Seleccionar sede" /></div>
             )}
             {needsPerson && (
-              <div><label style={{ fontSize: 11, color: C.textMuted, display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 }}>{type === "prestamo" ? "Prestado a" : "Devuelto por"}</label>
+              <div><label style={LBL}>{type === "prestamo" ? "Prestado a" : "Devuelto por"}</label>
                 <Select value={person} onChange={setPerson} options={people.length > 0 ? people.map(p => typeof p === "string" ? p : p.name) : ["(Agrega consultoras en Admin)"]} placeholder="Seleccionar consultora" /></div>
             )}
-            <div><label style={{ fontSize: 11, color: C.textMuted, display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 }}>Notas (opcional)</label>
+            <div><label style={LBL}>Notas (opcional)</label>
               <Input value={notes} onChange={setNotes} placeholder="Agregar nota..." /></div>
           </div>
         </Card>
@@ -833,7 +872,7 @@ function MoveView({ products, people, movements, user, addMovement }) {
         <Btn onClick={handleSubmit}
           disabled={!type || !productId || !qty || (!isTraslado && !sede) || (isTraslado && (!sedeFrom || !sedeTo)) || (needsPerson && !person)}
           style={{ width: "100%", padding: "14px 20px", fontSize: 14, borderRadius: 10 }}>
-          <Icon name="check" size={16} /> Registrar movimiento
+          <Icon name="check" size={16} /> Registrar {direction === "ingreso" ? "ingreso" : "egreso"}
         </Btn>
       )}
     </div>
@@ -857,7 +896,7 @@ function LoansView({ products, movements, addMovement, currentUser, can }) {
 
   const activeLoans = useMemo(() => {
     const loans = {};
-    movements.filter(m => m.type === "prestamo" || m.type === "devolucion").forEach(m => {
+    movements.filter(m => (m.type === "prestamo" || m.type === "devolucion") && m.person).forEach(m => {
       const key = `${m.productId}-${m.person}`;
       if (!loans[key]) loans[key] = { productId: m.productId, person: m.person, qty: 0, firstDate: m.date };
       if (m.type === "prestamo") loans[key].qty += m.qty;
@@ -990,7 +1029,7 @@ function LoansView({ products, movements, addMovement, currentUser, can }) {
               <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>Prestado a {showReturn.person} · {showReturn.qty} ud.</div>
             </div>
             <div><label style={LBL}>Cantidad a devolver</label>
-              <Input type="number" value={returnQty} onChange={v => setReturnQty(v)} placeholder="Cantidad" /></div>
+              <Input value={returnQty} onChange={v => setReturnQty(v.replace(/[^0-9]/g, ""))} placeholder="Cantidad" /></div>
             <div><label style={LBL}>Sede donde se devuelve</label>
               <Select value={returnSede} onChange={setReturnSede} options={SEDES} placeholder="Seleccionar sede" /></div>
             <div><label style={LBL}>Nota (opcional)</label>
@@ -1065,7 +1104,7 @@ function HistoryView({ products, movements, removeMovement, currentUser }) {
       )}
 
       <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-        <Select value={filterType} onChange={setFilterType} options={MOVE_TYPES.map(t => ({ value: t.id, label: t.label }))} placeholder="Tipo" style={{ flex: 1, minWidth: 140 }} />
+        <Select value={filterType} onChange={setFilterType} options={MOVE_TYPES.filter(t => t.group !== "_legacy").map(t => ({ value: t.id, label: t.label }))} placeholder="Tipo" style={{ flex: 1, minWidth: 140 }} />
         <Select value={filterOperator} onChange={setFilterOperator} options={operators} placeholder="Operadora" style={{ flex: 1, minWidth: 140 }} />
       </div>
       {sorted.length === 0 ? (
