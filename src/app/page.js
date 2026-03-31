@@ -77,7 +77,7 @@ function parseMovements(rows) {
     qty: Number(r.Cantidad) || 0, sede: r.Sede || undefined,
     sedeFrom: r["Sede Origen"] || undefined, sedeTo: r["Sede Destino"] || undefined,
     person: r.Consultora || undefined, notes: r.Notas || "",
-    operator: r.Operadora || "", date: r.Fecha || ""
+    operator: r.Operadora || "", date: r.Fecha || "", _row: r._row
   }));
 }
 
@@ -304,6 +304,14 @@ export default function App() {
     });
   }, [withSave, products]);
 
+  const removeMovement = useCallback(async (movement) => {
+    // _row is the 1-indexed sheet row; we need to convert to data row index
+    // _row from getSheetData is already the sheet row number (2 = first data row)
+    // removeRow expects 1-indexed data row (1 = first data row = sheet row 2)
+    const dataRowIndex = movement._row - 1;
+    await withSave(() => gsWrite("removeMovement", {}, `row=${dataRowIndex}`));
+  }, [withSave]);
+
   // ── Consultora operations ──
   const addConsultora = useCallback(async (consultora) => {
     await withSave(() => gsWrite("addConsultora", {
@@ -410,7 +418,8 @@ export default function App() {
           user={currentUser.name} addMovement={addMovement} />}
         {page === "loans" && <LoansView products={products} movements={movements}
           addMovement={addMovement} currentUser={currentUser} can={can} />}
-        {page === "history" && <HistoryView products={products} movements={movements} />}
+        {page === "history" && <HistoryView products={products} movements={movements}
+          removeMovement={removeMovement} currentUser={currentUser} />}
         {page === "admin" && <AdminView products={products} people={people} operators={operators} categories={categories}
           currentUser={currentUser} can={can}
           updateProduct={updateProduct} addProduct={addProduct} bulkUpdateProducts={bulkUpdateProducts}
@@ -1022,9 +1031,14 @@ function LoansView({ products, movements, addMovement, currentUser, can }) {
 // ═══════════════════════════════════════════════
 // HISTORY VIEW
 // ═══════════════════════════════════════════════
-function HistoryView({ products, movements }) {
+function HistoryView({ products, movements, removeMovement, currentUser }) {
   const [filterType, setFilterType] = useState("");
   const [filterOperator, setFilterOperator] = useState("");
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [success, setSuccess] = useState("");
+
+  const canDelete = currentUser?.role === "admin" || currentUser?.role === "directora";
+
   const sorted = useMemo(() => {
     let m = [...movements].reverse();
     if (filterType) m = m.filter(mv => mv.type === filterType);
@@ -1033,9 +1047,23 @@ function HistoryView({ products, movements }) {
   }, [movements, filterType, filterOperator]);
   const operators = [...new Set(movements.map(m => m.operator))];
 
+  const handleDelete = async () => {
+    if (!confirmDelete) return;
+    await removeMovement(confirmDelete);
+    setConfirmDelete(null);
+    setSuccess("Movimiento eliminado");
+    setTimeout(() => setSuccess(""), 2000);
+  };
+
   return (
     <div style={{ marginTop: 24 }}>
       <SectionTitle>Historial de Movimientos</SectionTitle>
+
+      {success && (
+        <div style={{ padding: "12px 16px", borderRadius: 8, background: C.greenBg, color: C.green,
+          fontSize: 14, fontWeight: 600, marginBottom: 16, textAlign: "center" }}>{success}</div>
+      )}
+
       <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
         <Select value={filterType} onChange={setFilterType} options={MOVE_TYPES.map(t => ({ value: t.id, label: t.label }))} placeholder="Tipo" style={{ flex: 1, minWidth: 140 }} />
         <Select value={filterOperator} onChange={setFilterOperator} options={operators} placeholder="Operadora" style={{ flex: 1, minWidth: 140 }} />
@@ -1067,10 +1095,17 @@ function HistoryView({ products, movements }) {
                     </div>
                     {m.notes && <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2, fontStyle: "italic" }}>"{m.notes}"</div>}
                   </div>
-                  <div style={{ textAlign: "right", flexShrink: 0 }}>
-                    <div style={{ fontSize: 12, color: C.textSecondary }}>{d.toLocaleDateString("es-PE", { day: "2-digit", month: "short" })}</div>
-                    <div style={{ fontSize: 11, color: C.textMuted }}>{d.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" })}</div>
-                    <div style={{ fontSize: 11, color: C.gold, marginTop: 2, fontWeight: 600 }}>{m.operator}</div>
+                  <div style={{ textAlign: "right", flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
+                    <div>
+                      <div style={{ fontSize: 12, color: C.textSecondary }}>{d.toLocaleDateString("es-PE", { day: "2-digit", month: "short" })}</div>
+                      <div style={{ fontSize: 11, color: C.textMuted }}>{d.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" })}</div>
+                      <div style={{ fontSize: 11, color: C.gold, marginTop: 2, fontWeight: 600 }}>{m.operator}</div>
+                    </div>
+                    {canDelete && (
+                      <button onClick={() => setConfirmDelete(m)}
+                        style={{ background: "none", border: "none", cursor: "pointer", color: C.red,
+                          fontSize: 11, fontFamily: FONT_BODY, fontWeight: 600, padding: "2px 0" }}>Eliminar</button>
+                    )}
                   </div>
                 </div>
               </Card>
@@ -1078,6 +1113,33 @@ function HistoryView({ products, movements }) {
           })}
         </div>
       )}
+
+      <Modal open={confirmDelete !== null} onClose={() => setConfirmDelete(null)} title="Eliminar Movimiento">
+        {confirmDelete && (() => {
+          const prod = products.find(p => p.id === confirmDelete.productId);
+          const type = MOVE_TYPES.find(t => t.id === confirmDelete.type);
+          return (
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ padding: "12px 14px", borderRadius: 8, background: C.redBg, border: `1px solid ${C.red}22` }}>
+                <div style={{ fontSize: 13, color: C.red, fontWeight: 600 }}>Esta acción no se puede deshacer.</div>
+                <div style={{ fontSize: 12, color: C.red, marginTop: 4, opacity: 0.8 }}>El movimiento será eliminado permanentemente del historial y del Google Sheet.</div>
+              </div>
+              <div style={{ padding: "12px 14px", borderRadius: 8, background: C.bg }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <span style={{ fontSize: 16 }}>{type?.icon}</span>
+                  <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{prod?.name || "?"}</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: type?.color }}>{type?.dir === 1 ? "+" : type?.dir === -1 ? "−" : "⇄"}{confirmDelete.qty}</span>
+                </div>
+                <div style={{ fontSize: 12, color: C.textMuted, marginTop: 4 }}>
+                  {type?.label} · {new Date(confirmDelete.date).toLocaleDateString("es-PE")} · por {confirmDelete.operator}
+                </div>
+              </div>
+              <div style={{ fontSize: 12, color: C.textMuted }}>Eliminado por: <strong>{currentUser?.name}</strong></div>
+              <Btn onClick={handleDelete} variant="danger" style={{ width: "100%" }}>Eliminar movimiento</Btn>
+            </div>
+          );
+        })()}
+      </Modal>
     </div>
   );
 }
