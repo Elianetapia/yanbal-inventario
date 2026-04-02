@@ -23,7 +23,6 @@ const MOVE_TYPES = [
   { id: "venta", label: "Venta", icon: "💰", dir: -1, color: "#b5485f", group: "egreso" },
   { id: "prestamo", label: "Préstamo de producto", icon: "🤝", dir: -1, color: "#9a6c3b", group: "egreso" },
   { id: "traslado_out", label: "Traslado entre sedes", icon: "🚚", dir: 0, color: "#4a6fa5", group: "egreso" },
-  // Legacy types for backwards compatibility with existing data
   { id: "traslado", label: "Traslado", icon: "🚚", dir: 0, color: "#4a6fa5", group: "_legacy" },
   { id: "ajuste_pos", label: "Ajuste positivo", icon: "➕", dir: 1, color: "#2d7a4f", group: "_legacy" },
   { id: "ajuste_neg", label: "Ajuste negativo", icon: "➖", dir: -1, color: "#b5485f", group: "_legacy" },
@@ -74,13 +73,16 @@ function parseProducts(rows) {
   }));
 }
 
+// ← MODIFICADO: lee loanId
 function parseMovements(rows) {
   return rows.map(r => ({
     id: r.ID || "", productId: Number(r["Producto ID"]) || 0, type: r.Tipo || "",
     qty: Math.abs(Number(r.Cantidad)) || 0, sede: r.Sede || "",
     sedeFrom: r["Sede Origen"] || "", sedeTo: r["Sede Destino"] || "",
     person: r.Consultora || "", notes: r.Notas || "",
-    operator: r.Operadora || "", date: r.Fecha || "", _row: r._row
+    operator: r.Operadora || "", date: r.Fecha || "",
+    loanId: r["Loan ID"] || "", // ← NUEVO
+    _row: r._row
   }));
 }
 
@@ -100,26 +102,11 @@ function parseCategorias(rows) { return rows.map(r => r.Nombre).filter(Boolean);
 // YANBAL BRAND COLORS
 // ═══════════════════════════════════════════════
 const C = {
-  bg: "#faf9f7",
-  card: "#ffffff",
-  border: "#e8e4df",
-  borderLight: "#f0ece7",
-  gold: "#8b6914",
-  goldLight: "#b8960f",
-  goldBg: "#f7f0e0",
-  goldMuted: "#c4a44e",
-  text: "#2c2825",
-  textSecondary: "#6b6560",
-  textMuted: "#9e9790",
-  white: "#ffffff",
-  green: "#2d7a4f",
-  greenBg: "#edf7f0",
-  red: "#b5485f",
-  redBg: "#fdf0f2",
-  yellow: "#9a6c3b",
-  yellowBg: "#fdf5ec",
-  blue: "#4a6fa5",
-  blueBg: "#eef3fa",
+  bg: "#faf9f7", card: "#ffffff", border: "#e8e4df", borderLight: "#f0ece7",
+  gold: "#8b6914", goldLight: "#b8960f", goldBg: "#f7f0e0", goldMuted: "#c4a44e",
+  text: "#2c2825", textSecondary: "#6b6560", textMuted: "#9e9790", white: "#ffffff",
+  green: "#2d7a4f", greenBg: "#edf7f0", red: "#b5485f", redBg: "#fdf0f2",
+  yellow: "#9a6c3b", yellowBg: "#fdf5ec", blue: "#4a6fa5", blueBg: "#eef3fa",
   shadow: "0 1px 3px rgba(44,40,37,0.06), 0 1px 2px rgba(44,40,37,0.04)",
   shadowHover: "0 4px 12px rgba(44,40,37,0.08), 0 2px 4px rgba(44,40,37,0.04)",
 };
@@ -128,10 +115,15 @@ const FONT = "'Cormorant Garamond', Georgia, serif";
 const FONT_BODY = "'DM Sans', -apple-system, sans-serif";
 const FONT_NUM = "'Outfit', 'DM Sans', sans-serif";
 
+// ← MODIFICADO: font sizes más grandes en toda la app
+const FS = {
+  xs: 13, sm: 15, base: 16, md: 17, lg: 19, xl: 22, xxl: 28, title: 32,
+};
+
 // ═══════════════════════════════════════════════
 // REUSABLE COMPONENTS
 // ═══════════════════════════════════════════════
-const Icon = ({ name, size = 18 }) => {
+const Icon = ({ name, size = 20 }) => {
   const s = { width: size, height: size, display: "inline-block", verticalAlign: "middle" };
   const icons = {
     search: <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg>,
@@ -143,13 +135,14 @@ const Icon = ({ name, size = 18 }) => {
     settings: <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>,
     check: <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="20 6 9 17 4 12"/></svg>,
     x: <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M18 6 6 18M6 6l12 12"/></svg>,
+    trash: <svg style={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg>,
   };
   return icons[name] || null;
 };
 
 const Btn = ({ children, onClick, variant = "primary", disabled, style = {} }) => {
-  const base = { padding: "11px 22px", borderRadius: 8, border: "none", cursor: disabled ? "not-allowed" : "pointer",
-    fontWeight: 600, fontSize: 14, display: "inline-flex", alignItems: "center", gap: 8,
+  const base = { padding: "13px 24px", borderRadius: 8, border: "none", cursor: disabled ? "not-allowed" : "pointer",
+    fontWeight: 600, fontSize: FS.base, display: "inline-flex", alignItems: "center", gap: 8,
     transition: "all 0.2s", opacity: disabled ? 0.4 : 1, fontFamily: FONT_BODY, letterSpacing: 0.2 };
   const v = {
     primary: { background: C.gold, color: "#fff" },
@@ -162,8 +155,8 @@ const Btn = ({ children, onClick, variant = "primary", disabled, style = {} }) =
 
 const Input = ({ value, onChange, placeholder, style = {}, type = "text" }) => (
   <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-    style={{ width: "100%", padding: "11px 14px", borderRadius: 8, border: `1px solid ${C.border}`,
-      background: C.white, color: C.text, fontSize: 15, outline: "none", fontFamily: FONT_BODY,
+    style={{ width: "100%", padding: "13px 16px", borderRadius: 8, border: `1px solid ${C.border}`,
+      background: C.white, color: C.text, fontSize: FS.base, outline: "none", fontFamily: FONT_BODY,
       boxSizing: "border-box", transition: "border-color 0.2s", ...style }}
     onFocus={e => e.target.style.borderColor = C.goldMuted}
     onBlur={e => e.target.style.borderColor = C.border} />
@@ -171,11 +164,11 @@ const Input = ({ value, onChange, placeholder, style = {}, type = "text" }) => (
 
 const Select = ({ value, onChange, options, placeholder, style = {} }) => (
   <select value={value} onChange={e => onChange(e.target.value)}
-    style={{ width: "100%", padding: "11px 14px", borderRadius: 8, border: `1px solid ${C.border}`,
-      background: C.white, color: value ? C.text : C.textMuted, fontSize: 14,
+    style={{ width: "100%", padding: "13px 16px", borderRadius: 8, border: `1px solid ${C.border}`,
+      background: C.white, color: value ? C.text : C.textMuted, fontSize: FS.base,
       outline: "none", fontFamily: FONT_BODY, boxSizing: "border-box", appearance: "none",
       backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%239e9790' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E")`,
-      backgroundRepeat: "no-repeat", backgroundPosition: "right 12px center", paddingRight: 36, ...style }}>
+      backgroundRepeat: "no-repeat", backgroundPosition: "right 14px center", paddingRight: 40, ...style }}>
     {placeholder && <option value="">{placeholder}</option>}
     {options.map(o => <option key={typeof o === "string" ? o : o.value} value={typeof o === "string" ? o : o.value}>
       {typeof o === "string" ? o : o.label}</option>)}
@@ -183,19 +176,19 @@ const Select = ({ value, onChange, options, placeholder, style = {} }) => (
 );
 
 const Badge = ({ children, color = C.gold, bg }) => (
-  <span style={{ padding: "4px 12px", borderRadius: 20, fontSize: 12, fontWeight: 600,
+  <span style={{ padding: "5px 14px", borderRadius: 20, fontSize: FS.sm, fontWeight: 600,
     color, background: bg || C.goldBg, whiteSpace: "nowrap", letterSpacing: 0.2 }}>{children}</span>
 );
 
 const Card = ({ children, style = {}, onClick }) => (
   <div onClick={onClick} style={{ background: C.card, borderRadius: 10, border: `1px solid ${C.border}`,
-    padding: 20, cursor: onClick ? "pointer" : "default", transition: "all 0.2s",
+    padding: 22, cursor: onClick ? "pointer" : "default", transition: "all 0.2s",
     boxShadow: C.shadow, ...style }}>{children}</div>
 );
 
 const StockBadge = ({ qty }) => {
-  const s = { display: "inline-block", width: 72, textAlign: "center", padding: "4px 0", borderRadius: 20,
-    fontSize: 12, fontWeight: 600, whiteSpace: "nowrap", letterSpacing: 0.2 };
+  const s = { display: "inline-block", width: 78, textAlign: "center", padding: "5px 0", borderRadius: 20,
+    fontSize: FS.sm, fontWeight: 600, whiteSpace: "nowrap", letterSpacing: 0.2 };
   if (qty > 3) return <span style={{ ...s, color: C.green, background: C.greenBg }}>{qty} disp.</span>;
   if (qty > 0) return <span style={{ ...s, color: C.yellow, background: C.yellowBg }}>{qty} bajo</span>;
   return <span style={{ ...s, color: C.red, background: C.redBg }}>Sin stock</span>;
@@ -209,10 +202,10 @@ const Modal = ({ open, onClose, title, children }) => {
       <div style={{ position: "fixed", inset: 0, background: "rgba(44,40,37,0.4)", backdropFilter: "blur(4px)" }} />
       <div onClick={e => e.stopPropagation()}
         style={{ background: C.white, borderRadius: 14, border: `1px solid ${C.border}`,
-          padding: 28, maxWidth: 520, width: "100%", maxHeight: "85vh", overflowY: "auto",
+          padding: 30, maxWidth: 540, width: "100%", maxHeight: "85vh", overflowY: "auto",
           position: "relative", zIndex: 1, boxShadow: "0 20px 60px rgba(44,40,37,0.15)" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-          <h3 style={{ margin: 0, color: C.text, fontSize: 18, fontFamily: FONT, fontWeight: 600 }}>{title}</h3>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 26 }}>
+          <h3 style={{ margin: 0, color: C.text, fontSize: FS.xl, fontFamily: FONT, fontWeight: 600 }}>{title}</h3>
           <button onClick={onClose} style={{ background: "none", border: "none", color: C.textMuted,
             cursor: "pointer", padding: 4 }}><Icon name="x" /></button>
         </div>
@@ -223,9 +216,12 @@ const Modal = ({ open, onClose, title, children }) => {
 };
 
 const SectionTitle = ({ children }) => (
-  <h2 style={{ fontSize: 30, fontWeight: 600, color: C.text, margin: "0 0 22px", fontFamily: FONT,
+  <h2 style={{ fontSize: FS.title, fontWeight: 600, color: C.text, margin: "0 0 24px", fontFamily: FONT,
     letterSpacing: -0.3 }}>{children}</h2>
 );
+
+const LBL = { fontSize: FS.xs, color: "#9e9790", display: "block", marginBottom: 7,
+  textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 };
 
 // ═══════════════════════════════════════════════
 // MAIN APP
@@ -247,9 +243,7 @@ export default function App() {
       gsRead("getProducts"), gsRead("getMovements"), gsRead("getConsultoras"),
       gsRead("getOperadoras"), gsRead("getCategorias")
     ]);
-    if (prods.length === 0 && ops.length === 0) {
-      throw new Error("No data returned from Google Sheets");
-    }
+    if (prods.length === 0 && ops.length === 0) throw new Error("No data returned from Google Sheets");
     setProducts(parseProducts(prods));
     setMovements(parseMovements(movs));
     setPeople(parseConsultoras(cons));
@@ -263,7 +257,6 @@ export default function App() {
       .catch(e => { console.error("Load failed:", e); setLoadError(true); setLoading(false); });
   }, [reload]);
 
-  // Wrap write operations: save to GSheets, then reload
   const withSave = useCallback(async (fn) => {
     setSaving(true);
     try { await fn(); await reload(); }
@@ -271,7 +264,6 @@ export default function App() {
     finally { setSaving(false); }
   }, [reload]);
 
-  // ── Product operations ──
   const updateProduct = useCallback(async (product) => {
     await withSave(async () => {
       await gsWrite("updateProduct", {
@@ -293,7 +285,6 @@ export default function App() {
     });
   }, [withSave, products]);
 
-  // ── Movement operations ──
   const addMovement = useCallback(async (movement) => {
     await withSave(async () => {
       const prod = products.find(p => p.id === movement.productId);
@@ -302,20 +293,35 @@ export default function App() {
         Producto: prod?.name || "", Tipo: movement.type, Cantidad: movement.qty,
         Sede: movement.sede || "", "Sede Origen": movement.sedeFrom || "",
         "Sede Destino": movement.sedeTo || "", Consultora: movement.person || "",
-        Notas: movement.notes || "", Operadora: movement.operator
+        Notas: movement.notes || "", Operadora: movement.operator,
+        "Loan ID": movement.loanId || "",
       });
     });
   }, [withSave, products]);
 
+  // ← NUEVO: escribe múltiples movimientos con el mismo loanId
+  const addMovements = useCallback(async (movementList) => {
+    await withSave(async () => {
+      const rows = movementList.map(movement => {
+        const prod = products.find(p => p.id === movement.productId);
+        return {
+          ID: movement.id, Fecha: movement.date, "Producto ID": movement.productId,
+          Producto: prod?.name || "", Tipo: movement.type, Cantidad: movement.qty,
+          Sede: movement.sede || "", "Sede Origen": movement.sedeFrom || "",
+          "Sede Destino": movement.sedeTo || "", Consultora: movement.person || "",
+          Notas: movement.notes || "", Operadora: movement.operator,
+          "Loan ID": movement.loanId || "",
+        };
+      });
+      await gsWrite("addMovements", rows);
+    });
+  }, [withSave, products]);
+
   const removeMovement = useCallback(async (movement) => {
-    // _row is the 1-indexed sheet row; we need to convert to data row index
-    // _row from getSheetData is already the sheet row number (2 = first data row)
-    // removeRow expects 1-indexed data row (1 = first data row = sheet row 2)
     const dataRowIndex = movement._row - 1;
     await withSave(() => gsWrite("removeMovement", {}, `row=${dataRowIndex}`));
   }, [withSave]);
 
-  // ── Consultora operations ──
   const addConsultora = useCallback(async (consultora) => {
     await withSave(() => gsWrite("addConsultora", {
       Nombre: consultora.name, "Teléfono": consultora.phone || "",
@@ -334,7 +340,6 @@ export default function App() {
     }, `row=${index + 1}`));
   }, [withSave]);
 
-  // ── Category operations ──
   const addCategoria = useCallback(async (name) => {
     await withSave(() => gsWrite("addCategoria", { Nombre: name }));
   }, [withSave]);
@@ -345,7 +350,6 @@ export default function App() {
     await withSave(() => gsWrite("removeCategoria", {}, `row=${index + 1}`));
   }, [withSave]);
 
-  // ── Operator operations ──
   const addOperadora = useCallback(async (op) => {
     await withSave(() => gsWrite("addOperadora", { Nombre: op.name, PIN: op.pin, Rol: op.role }));
   }, [withSave]);
@@ -358,7 +362,6 @@ export default function App() {
     await withSave(() => gsWrite("removeOperadora", {}, `row=${index + 1}`));
   }, [withSave]);
 
-  // ── Bulk product update (for category rename reassign) ──
   const bulkUpdateProducts = useCallback(async (newProducts) => {
     await withSave(async () => {
       const data = newProducts.map(p => ({
@@ -383,8 +386,8 @@ export default function App() {
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center",
       justifyContent: "center", fontFamily: FONT_BODY }}>
       <div style={{ textAlign: "center" }}>
-        <div style={{ fontSize: 14, letterSpacing: 5, color: C.gold, fontWeight: 600, fontFamily: FONT_BODY }}>YANBAL</div>
-        <div style={{ color: C.textMuted, fontSize: 13, marginTop: 8 }}>Cargando inventario...</div>
+        <div style={{ fontSize: FS.sm, letterSpacing: 5, color: C.gold, fontWeight: 600, fontFamily: FONT_BODY }}>YANBAL</div>
+        <div style={{ color: C.textMuted, fontSize: FS.base, marginTop: 8 }}>Cargando inventario...</div>
       </div>
     </div>
   );
@@ -393,14 +396,14 @@ export default function App() {
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center",
       justifyContent: "center", fontFamily: FONT_BODY, padding: 20 }}>
       <div style={{ textAlign: "center", maxWidth: 400 }}>
-        <div style={{ fontSize: 14, letterSpacing: 5, color: C.gold, fontWeight: 600 }}>YANBAL</div>
-        <div style={{ color: C.red, fontSize: 16, marginTop: 16, fontWeight: 600 }}>Error de conexión</div>
-        <div style={{ color: C.textMuted, fontSize: 14, marginTop: 8, lineHeight: 1.5 }}>
-          No se pudo conectar con Google Sheets. Verifica que el Apps Script esté desplegado correctamente y que el Sheet esté compartido.
+        <div style={{ fontSize: FS.sm, letterSpacing: 5, color: C.gold, fontWeight: 600 }}>YANBAL</div>
+        <div style={{ color: C.red, fontSize: FS.lg, marginTop: 16, fontWeight: 600 }}>Error de conexión</div>
+        <div style={{ color: C.textMuted, fontSize: FS.base, marginTop: 8, lineHeight: 1.5 }}>
+          No se pudo conectar con Google Sheets.
         </div>
         <button onClick={() => { setLoadError(false); setLoading(true); reload().then(() => setLoading(false)).catch(() => { setLoadError(true); setLoading(false); }); }}
-          style={{ marginTop: 20, padding: "12px 24px", borderRadius: 8, border: "none",
-            background: C.gold, color: "#fff", fontWeight: 600, fontSize: 14, cursor: "pointer", fontFamily: FONT_BODY }}>
+          style={{ marginTop: 20, padding: "13px 26px", borderRadius: 8, border: "none",
+            background: C.gold, color: "#fff", fontWeight: 600, fontSize: FS.base, cursor: "pointer", fontFamily: FONT_BODY }}>
           Reintentar
         </button>
       </div>
@@ -418,9 +421,9 @@ export default function App() {
       <main style={{ maxWidth: 900, margin: "0 auto", padding: "0 20px 100px" }}>
         {page === "stock" && <StockView products={products} movements={movements} categories={categories} />}
         {page === "move" && <MoveView products={products} people={people} movements={movements}
-          user={currentUser.name} addMovement={addMovement} />}
+          user={currentUser.name} addMovement={addMovement} addMovements={addMovements} />}
         {page === "loans" && <LoansView products={products} movements={movements}
-          addMovement={addMovement} currentUser={currentUser} can={can} />}
+          addMovements={addMovements} currentUser={currentUser} can={can} />}
         {page === "history" && <HistoryView products={products} movements={movements}
           removeMovement={removeMovement} currentUser={currentUser} />}
         {page === "admin" && <AdminView products={products} people={people} operators={operators} categories={categories}
@@ -445,47 +448,37 @@ function LoginScreen({ operators, onSelect }) {
   const handleLogin = () => {
     const op = operators.find(o => o.name === selected);
     if (!op) return;
-    if (op.pin === "0000") {
-      // Default PIN — let them in but warn
-      onSelect({ name: op.name, role: op.role });
-    } else if (op.pin === pin) {
-      onSelect({ name: op.name, role: op.role });
-    } else {
-      setError("PIN incorrecto"); setPin("");
-    }
+    if (op.pin === "0000") { onSelect({ name: op.name, role: op.role }); }
+    else if (op.pin === pin) { onSelect({ name: op.name, role: op.role }); }
+    else { setError("PIN incorrecto"); setPin(""); }
   };
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, display: "flex", alignItems: "center",
       justifyContent: "center", fontFamily: FONT_BODY, padding: 20 }}>
-      <div style={{ textAlign: "center", maxWidth: 380, width: "100%" }}>
-        <div style={{ fontSize: 14, fontWeight: 600, color: C.gold, letterSpacing: 6,
-          marginBottom: 12, fontFamily: FONT_BODY }}>YANBAL</div>
-        <div style={{ fontSize: 36, fontWeight: 500, color: C.text, marginBottom: 6, fontFamily: FONT,
-          lineHeight: 1.2 }}>Sistema de Inventario</div>
+      <div style={{ textAlign: "center", maxWidth: 400, width: "100%" }}>
+        <div style={{ fontSize: FS.base, fontWeight: 600, color: C.gold, letterSpacing: 6, marginBottom: 12 }}>YANBAL</div>
+        <div style={{ fontSize: 40, fontWeight: 500, color: C.text, marginBottom: 6, fontFamily: FONT, lineHeight: 1.2 }}>Sistema de Inventario</div>
         <div style={{ width: 40, height: 1, background: C.goldMuted, margin: "16px auto 32px" }} />
-
         {!selected ? (
           <>
-            <div style={{ color: C.textSecondary, fontSize: 15, marginBottom: 24 }}>
-              Selecciona tu nombre
-            </div>
+            <div style={{ color: C.textSecondary, fontSize: FS.md, marginBottom: 24 }}>Selecciona tu nombre</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
               {operators.map(op => (
                 <button key={op.name} onClick={() => { setSelected(op.name); setPin(""); setError(""); }}
-                  style={{ padding: "16px 20px", borderRadius: 10, border: `1px solid ${C.border}`,
-                    background: C.white, color: C.text, fontSize: 16, fontWeight: 500,
+                  style={{ padding: "18px 22px", borderRadius: 10, border: `1px solid ${C.border}`,
+                    background: C.white, color: C.text, fontSize: FS.md, fontWeight: 500,
                     cursor: "pointer", transition: "all 0.2s", fontFamily: FONT_BODY, textAlign: "left",
                     display: "flex", alignItems: "center", gap: 14, boxShadow: C.shadow }}>
-                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: C.goldBg,
+                  <div style={{ width: 44, height: 44, borderRadius: "50%", background: C.goldBg,
                     display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <span style={{ color: C.gold, fontWeight: 700, fontSize: 15, fontFamily: FONT }}>
+                    <span style={{ color: C.gold, fontWeight: 700, fontSize: FS.md, fontFamily: FONT }}>
                       {op.name.charAt(0).toUpperCase()}
                     </span>
                   </div>
                   <div>
-                    <div>{op.name}</div>
-                    <div style={{ fontSize: 12, color: C.textMuted }}>{ROLES[op.role]}</div>
+                    <div style={{ fontSize: FS.md }}>{op.name}</div>
+                    <div style={{ fontSize: FS.sm, color: C.textMuted }}>{ROLES[op.role]}</div>
                   </div>
                 </button>
               ))}
@@ -493,30 +486,23 @@ function LoginScreen({ operators, onSelect }) {
           </>
         ) : (
           <>
-            <div style={{ color: C.textSecondary, fontSize: 15, marginBottom: 8 }}>
-              Hola, {selected}
-            </div>
+            <div style={{ color: C.textSecondary, fontSize: FS.md, marginBottom: 8 }}>Hola, {selected}</div>
             {operators.find(o => o.name === selected)?.pin === "0000" ? (
               <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 16 }}>
-                <div style={{ padding: "12px 16px", borderRadius: 8, background: C.yellowBg, color: C.yellow, fontSize: 13 }}>
+                <div style={{ padding: "14px 16px", borderRadius: 8, background: C.yellowBg, color: C.yellow, fontSize: FS.sm }}>
                   Tu PIN es el predeterminado (0000). Cámbialo en Admin después de entrar.
                 </div>
-                <Btn onClick={() => onSelect({ name: selected, role: operators.find(o => o.name === selected).role })}
-                  style={{ width: "100%" }}>Entrar</Btn>
-                <button onClick={() => setSelected(null)}
-                  style={{ background: "none", border: "none", color: C.textMuted, cursor: "pointer",
-                    fontSize: 13, fontFamily: FONT_BODY, marginTop: 4 }}>← Cambiar usuario</button>
+                <Btn onClick={() => onSelect({ name: selected, role: operators.find(o => o.name === selected).role })} style={{ width: "100%" }}>Entrar</Btn>
+                <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", color: C.textMuted, cursor: "pointer", fontSize: FS.sm, fontFamily: FONT_BODY, marginTop: 4 }}>← Cambiar usuario</button>
               </div>
             ) : (
               <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 16 }}>
-                <div style={{ color: C.textMuted, fontSize: 13, marginBottom: 4 }}>Ingresa tu PIN</div>
+                <div style={{ color: C.textMuted, fontSize: FS.sm, marginBottom: 4 }}>Ingresa tu PIN</div>
                 <Input type="password" value={pin} onChange={v => { setPin(v.replace(/\D/g, "").slice(0, 4)); setError(""); }}
-                  placeholder="• • • •" style={{ textAlign: "center", fontSize: 24, letterSpacing: 12 }} />
-                {error && <div style={{ color: C.red, fontSize: 13 }}>{error}</div>}
+                  placeholder="• • • •" style={{ textAlign: "center", fontSize: 28, letterSpacing: 12 }} />
+                {error && <div style={{ color: C.red, fontSize: FS.sm }}>{error}</div>}
                 <Btn onClick={handleLogin} disabled={pin.length < 4} style={{ width: "100%" }}>Entrar</Btn>
-                <button onClick={() => setSelected(null)}
-                  style={{ background: "none", border: "none", color: C.textMuted, cursor: "pointer",
-                    fontSize: 13, fontFamily: FONT_BODY, marginTop: 4 }}>← Cambiar usuario</button>
+                <button onClick={() => setSelected(null)} style={{ background: "none", border: "none", color: C.textMuted, cursor: "pointer", fontSize: FS.sm, fontFamily: FONT_BODY, marginTop: 4 }}>← Cambiar usuario</button>
               </div>
             )}
           </>
@@ -531,37 +517,36 @@ function LoginScreen({ operators, onSelect }) {
 // ═══════════════════════════════════════════════
 function Header({ user, onLogout }) {
   return (
-    <div style={{ borderBottom: `1px solid ${C.border}`, padding: "14px 20px",
-      maxWidth: 900, margin: "0 auto", background: C.bg }}>
+    <div style={{ borderBottom: `1px solid ${C.border}`, padding: "16px 20px", maxWidth: 900, margin: "0 auto", background: C.bg }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <div>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 16, fontWeight: 700, color: C.gold, letterSpacing: 5, fontFamily: FONT_BODY }}>YANBAL</span>
-            <span style={{ color: C.border, fontSize: 20, lineHeight: 1 }}>|</span>
-            <span style={{ fontSize: 16, color: C.text, fontWeight: 500, fontFamily: FONT }}>Inventario</span>
+            <span style={{ fontSize: FS.md, fontWeight: 700, color: C.gold, letterSpacing: 5, fontFamily: FONT_BODY }}>YANBAL</span>
+            <span style={{ color: C.border, fontSize: 22, lineHeight: 1 }}>|</span>
+            <span style={{ fontSize: FS.md, color: C.text, fontWeight: 500, fontFamily: FONT }}>Inventario</span>
           </div>
-          <div style={{ fontSize: 12, color: C.textMuted, marginTop: 3, letterSpacing: 0.3 }}>
+          <div style={{ fontSize: FS.xs, color: C.textMuted, marginTop: 3, letterSpacing: 0.3 }}>
             Directora Elena Sta. Gadea — Uso exclusivo
           </div>
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <div style={{ width: 32, height: 32, borderRadius: "50%", background: C.goldBg,
+            <div style={{ width: 36, height: 36, borderRadius: "50%", background: C.goldBg,
               display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <span style={{ color: C.gold, fontWeight: 700, fontSize: 14 }}>{user.name.charAt(0)}</span>
+              <span style={{ color: C.gold, fontWeight: 700, fontSize: FS.base }}>{user.name.charAt(0)}</span>
             </div>
             <div>
-              <div style={{ fontSize: 14, color: C.text, fontWeight: 500 }}>{user.name}</div>
-              <div style={{ fontSize: 11, color: C.textMuted }}>{ROLES[user.role]}</div>
+              <div style={{ fontSize: FS.base, color: C.text, fontWeight: 500 }}>{user.name}</div>
+              <div style={{ fontSize: FS.xs, color: C.textMuted }}>{ROLES[user.role]}</div>
             </div>
           </div>
           <button onClick={onLogout} style={{ background: "none", border: "none", color: C.textMuted,
             cursor: "pointer", fontFamily: FONT_BODY, display: "flex", flexDirection: "column",
             alignItems: "center", gap: 2, padding: "4px 8px" }}>
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
             </svg>
-            <span style={{ fontSize: 9, letterSpacing: 0.3 }}>Salir</span>
+            <span style={{ fontSize: 10, letterSpacing: 0.3 }}>Salir</span>
           </button>
         </div>
       </div>
@@ -582,15 +567,14 @@ function Nav({ page, setPage, can }) {
       overflowX: "auto", borderBottom: `1px solid ${C.border}`, background: C.bg }}>
       {items.map(item => (
         <button key={item.id} onClick={() => setPage(item.id)}
-          style={{ padding: "14px 20px", border: "none",
-            background: "transparent",
+          style={{ padding: "16px 20px", border: "none", background: "transparent",
             color: page === item.id ? C.gold : C.textMuted,
-            cursor: "pointer", fontSize: 14, fontWeight: page === item.id ? 600 : 500,
+            cursor: "pointer", fontSize: FS.base, fontWeight: page === item.id ? 600 : 500,
             display: "flex", alignItems: "center", gap: 7, whiteSpace: "nowrap",
             fontFamily: FONT_BODY, transition: "all 0.15s", letterSpacing: 0.2,
             borderBottom: page === item.id ? `2px solid ${C.gold}` : "2px solid transparent",
             marginBottom: -1, borderRadius: 0 }}>
-          <Icon name={item.icon} size={16} />{item.label}
+          <Icon name={item.icon} size={17} />{item.label}
         </button>
       ))}
     </div>
@@ -650,57 +634,57 @@ function StockView({ products, movements, categories }) {
   }, [products, computedStock]);
 
   return (
-    <div style={{ marginTop: 24 }}>
+    <div style={{ marginTop: 26 }}>
       <SectionTitle>Stock de Productos</SectionTitle>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginBottom: 26 }}>
         {[
           { label: "Total productos", value: stats.total, color: C.gold, bg: C.goldBg },
           { label: "Con stock", value: stats.available, color: C.green, bg: C.greenBg },
           { label: "Sin stock", value: stats.outOfStock, color: C.red, bg: C.redBg },
         ].map(s => (
-          <Card key={s.label} style={{ padding: "18px 16px", textAlign: "center", borderLeft: `3px solid ${s.color}` }}>
-            <div style={{ fontSize: 32, fontWeight: 600, color: s.color, fontFamily: FONT_NUM }}>{s.value}</div>
-            <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2, fontWeight: 500, letterSpacing: 0.3, textTransform: "uppercase" }}>{s.label}</div>
+          <Card key={s.label} style={{ padding: "20px 18px", textAlign: "center", borderLeft: `3px solid ${s.color}` }}>
+            <div style={{ fontSize: 36, fontWeight: 600, color: s.color, fontFamily: FONT_NUM }}>{s.value}</div>
+            <div style={{ fontSize: FS.xs, color: C.textMuted, marginTop: 4, fontWeight: 500, letterSpacing: 0.3, textTransform: "uppercase" }}>{s.label}</div>
           </Card>
         ))}
       </div>
       <div style={{ position: "relative", marginBottom: 12 }}>
-        <div style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: C.textMuted }}><Icon name="search" size={16} /></div>
-        <Input value={search} onChange={setSearch} placeholder="Buscar producto o código..." style={{ paddingLeft: 40 }} />
+        <div style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: C.textMuted }}><Icon name="search" size={18} /></div>
+        <Input value={search} onChange={setSearch} placeholder="Buscar producto o código..." style={{ paddingLeft: 44 }} />
       </div>
-      <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 22, flexWrap: "wrap" }}>
         <Select value={catFilter} onChange={setCatFilter} options={categories} placeholder="Categoría" style={{ flex: 1, minWidth: 140 }} />
         <Select value={sedeFilter} onChange={setSedeFilter} options={SEDES} placeholder="Todas las sedes" style={{ flex: 1, minWidth: 140 }} />
         <Select value={stockFilter} onChange={setStockFilter}
           options={[{value:"disponible",label:"Con stock"},{value:"agotado",label:"Sin stock"},{value:"bajo",label:"Stock bajo"}]}
           placeholder="Estado" style={{ flex: 1, minWidth: 120 }} />
       </div>
-      <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 10, fontWeight: 500 }}>
+      <div style={{ fontSize: FS.sm, color: C.textMuted, marginBottom: 10, fontWeight: 500 }}>
         {filtered.length} producto{filtered.length !== 1 ? "s" : ""}
       </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
         {filtered.map(p => {
           const st = computedStock[p.id] || { mc: 0, sa: 0 };
           const total = st.mc + st.sa;
           return (
-            <Card key={p.id} style={{ padding: "14px 18px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
+            <Card key={p.id} style={{ padding: "16px 20px", display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12 }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontWeight: 600, fontSize: 15, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
-                <div style={{ fontSize: 12, color: C.textMuted, marginTop: 3, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                <div style={{ fontWeight: 600, fontSize: FS.md, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.name}</div>
+                <div style={{ fontSize: FS.sm, color: C.textMuted, marginTop: 4, display: "flex", gap: 8, flexWrap: "wrap" }}>
                   <span style={{ color: C.goldMuted }}>{p.category}</span>
                   {p.code && <span>CÓD. {p.code}</span>}
                   {p.price && <span>S/ {p.price}</span>}
                 </div>
               </div>
               <div style={{ flexShrink: 0, display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ textAlign: "center", width: 48 }}>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: st.mc > 0 ? C.green : C.red }}>{st.mc}</div>
-                  <div style={{ fontSize: 10, color: C.textMuted, letterSpacing: 0.5, fontWeight: 600 }}>MC</div>
+                <div style={{ textAlign: "center", width: 52 }}>
+                  <div style={{ fontSize: FS.lg, fontWeight: 700, color: st.mc > 0 ? C.green : C.red }}>{st.mc}</div>
+                  <div style={{ fontSize: FS.xs, color: C.textMuted, letterSpacing: 0.5, fontWeight: 600 }}>MC</div>
                 </div>
                 <div style={{ width: 1, height: 28, background: C.borderLight }} />
-                <div style={{ textAlign: "center", width: 48 }}>
-                  <div style={{ fontSize: 16, fontWeight: 700, color: st.sa > 0 ? C.green : C.red }}>{st.sa}</div>
-                  <div style={{ fontSize: 10, color: C.textMuted, letterSpacing: 0.5, fontWeight: 600 }}>SA</div>
+                <div style={{ textAlign: "center", width: 52 }}>
+                  <div style={{ fontSize: FS.lg, fontWeight: 700, color: st.sa > 0 ? C.green : C.red }}>{st.sa}</div>
+                  <div style={{ fontSize: FS.xs, color: C.textMuted, letterSpacing: 0.5, fontWeight: 600 }}>SA</div>
                 </div>
                 <div style={{ width: 1, height: 28, background: C.borderLight }} />
                 <StockBadge qty={total} />
@@ -708,17 +692,17 @@ function StockView({ products, movements, categories }) {
             </Card>
           );
         })}
-        {filtered.length === 0 && <div style={{ textAlign: "center", padding: 50, color: C.textMuted }}>No se encontraron productos</div>}
+        {filtered.length === 0 && <div style={{ textAlign: "center", padding: 50, color: C.textMuted, fontSize: FS.base }}>No se encontraron productos</div>}
       </div>
     </div>
   );
 }
 
 // ═══════════════════════════════════════════════
-// MOVE VIEW
+// MOVE VIEW — ← MODIFICADO: carrito para préstamos
 // ═══════════════════════════════════════════════
-function MoveView({ products, people, movements, user, addMovement }) {
-  const [direction, setDirection] = useState(""); // "ingreso" or "egreso"
+function MoveView({ products, people, movements, user, addMovement, addMovements }) {
+  const [direction, setDirection] = useState("");
   const [type, setType] = useState("");
   const [productId, setProductId] = useState("");
   const [qty, setQty] = useState("");
@@ -730,11 +714,19 @@ function MoveView({ products, people, movements, user, addMovement }) {
   const [success, setSuccess] = useState(false);
   const [productSearch, setProductSearch] = useState("");
 
+  // ← NUEVO: carrito para préstamos multi-producto
+  const [cart, setCart] = useState([]);
+  const [cartProductId, setCartProductId] = useState("");
+  const [cartProductSearch, setCartProductSearch] = useState("");
+  const [cartQty, setCartQty] = useState("1");
+
+  const isLoan = type === "prestamo";
   const filteredProducts = useMemo(() => {
-    if (!productSearch) return products.filter(p => p.active);
-    const s = productSearch.toLowerCase();
+    const search = isLoan ? cartProductSearch : productSearch;
+    if (!search) return products.filter(p => p.active);
+    const s = search.toLowerCase();
     return products.filter(p => p.active && (p.name.toLowerCase().includes(s) || p.code.includes(s)));
-  }, [products, productSearch]);
+  }, [products, productSearch, cartProductSearch, isLoan]);
 
   const moveType = MOVE_TYPES.find(t => t.id === type);
   const needsPerson = type === "prestamo" || type === "devolucion";
@@ -744,135 +736,255 @@ function MoveView({ products, people, movements, user, addMovement }) {
   const resetForm = () => {
     setDirection(""); setType(""); setProductId(""); setQty(""); setSede("");
     setSedeFrom(""); setSedeTo(""); setPerson(""); setNotes(""); setProductSearch("");
+    setCart([]); setCartProductId(""); setCartProductSearch(""); setCartQty("1");
   };
 
+  const addToCart = () => {
+    if (!cartProductId) return;
+    const parsedQty = Math.abs(parseInt(cartQty)) || 1;
+    const existing = cart.find(c => c.productId === parseInt(cartProductId));
+    if (existing) {
+      setCart(cart.map(c => c.productId === parseInt(cartProductId) ? { ...c, qty: c.qty + parsedQty } : c));
+    } else {
+      const prod = products.find(p => p.id === parseInt(cartProductId));
+      setCart([...cart, { productId: parseInt(cartProductId), name: prod?.name || "", qty: parsedQty }]);
+    }
+    setCartProductId(""); setCartProductSearch(""); setCartQty("1");
+  };
+
+  const removeFromCart = (productId) => setCart(cart.filter(c => c.productId !== productId));
+
+  const loanId = useMemo(() => Date.now().toString(36) + Math.random().toString(36).slice(2, 6), [type]);
+
   const handleSubmit = async () => {
-    const parsedQty = Math.abs(parseInt(qty));
-    if (!type || !productId || !parsedQty || parsedQty <= 0 || isNaN(parsedQty)) return;
-    if (!isTraslado && !sede) return;
-    if (isTraslado && (!sedeFrom || !sedeTo)) return;
-    if (needsPerson && !person) return;
-    const movement = {
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-      productId: parseInt(productId), type, qty: parsedQty,
-      sede: isTraslado ? "" : sede,
-      sedeFrom: isTraslado ? sedeFrom : "", sedeTo: isTraslado ? sedeTo : "",
-      person: needsPerson ? person : "", notes, operator: user,
-      date: new Date().toISOString(),
-    };
-    await addMovement(movement);
+    if (isLoan) {
+      if (!person || !sede || cart.length === 0) return;
+      const now = new Date().toISOString();
+      const movements = cart.map(item => ({
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        productId: item.productId, type: "prestamo", qty: item.qty,
+        sede, person, notes, operator: user, date: now, loanId,
+      }));
+      await addMovements(movements);
+    } else {
+      const parsedQty = Math.abs(parseInt(qty));
+      if (!type || !productId || !parsedQty || parsedQty <= 0) return;
+      if (!isTraslado && !sede) return;
+      if (isTraslado && (!sedeFrom || !sedeTo)) return;
+      if (needsPerson && !person) return;
+      await addMovement({
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        productId: parseInt(productId), type, qty: parsedQty,
+        sede: isTraslado ? "" : sede,
+        sedeFrom: isTraslado ? sedeFrom : "", sedeTo: isTraslado ? sedeTo : "",
+        person: needsPerson ? person : "", notes, operator: user,
+        date: new Date().toISOString(), loanId: "",
+      });
+    }
     setSuccess(true);
     setTimeout(() => { setSuccess(false); resetForm(); }, 1500);
   };
 
-  const LBL = { fontSize: 11, color: C.textMuted, display: "block", marginBottom: 6, textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 };
+  const isSubmitDisabled = isLoan
+    ? !person || !sede || cart.length === 0
+    : !type || !productId || !qty || (!isTraslado && !sede) || (isTraslado && (!sedeFrom || !sedeTo)) || (needsPerson && !person);
 
   if (success) return (
-    <div style={{ textAlign: "center", padding: "80px 20px", marginTop: 24 }}>
-      <div style={{ width: 56, height: 56, borderRadius: "50%", background: C.greenBg,
+    <div style={{ textAlign: "center", padding: "80px 20px", marginTop: 26 }}>
+      <div style={{ width: 60, height: 60, borderRadius: "50%", background: C.greenBg,
         display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 16px",
-        color: C.green }}><Icon name="check" size={26} /></div>
-      <div style={{ fontSize: 22, fontWeight: 500, color: C.green, fontFamily: FONT }}>Registrado</div>
-      <div style={{ color: C.textMuted, fontSize: 14, marginTop: 6 }}>Movimiento guardado correctamente</div>
+        color: C.green }}><Icon name="check" size={28} /></div>
+      <div style={{ fontSize: FS.xxl, fontWeight: 500, color: C.green, fontFamily: FONT }}>Registrado</div>
+      <div style={{ color: C.textMuted, fontSize: FS.md, marginTop: 8 }}>Movimiento guardado correctamente</div>
     </div>
   );
 
   return (
-    <div style={{ marginTop: 24 }}>
+    <div style={{ marginTop: 26 }}>
       <SectionTitle>Registrar Movimiento</SectionTitle>
 
-      {/* Step 1: Ingreso or Egreso */}
-      <Card style={{ marginBottom: 16 }}>
+      {/* Step 1: Dirección */}
+      <Card style={{ marginBottom: 14 }}>
         <label style={LBL}>Dirección</label>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
           {[
             { id: "ingreso", label: "Ingreso", icon: "📥", desc: "Entra producto al stock", color: C.green },
             { id: "egreso", label: "Egreso", icon: "📤", desc: "Sale producto del stock", color: C.red },
           ].map(d => (
-            <button key={d.id} onClick={() => { setDirection(d.id); setType(""); }}
-              style={{ padding: "16px 14px", borderRadius: 10, border: `2px solid ${direction === d.id ? d.color : C.border}`,
+            <button key={d.id} onClick={() => { setDirection(d.id); setType(""); setCart([]); }}
+              style={{ padding: "18px 14px", borderRadius: 10, border: `2px solid ${direction === d.id ? d.color : C.border}`,
                 background: direction === d.id ? d.color + "0a" : C.white, cursor: "pointer",
                 textAlign: "center", fontFamily: FONT_BODY, transition: "all 0.15s" }}>
-              <div style={{ fontSize: 24 }}>{d.icon}</div>
-              <div style={{ fontSize: 15, fontWeight: 700, color: direction === d.id ? d.color : C.text, marginTop: 6 }}>{d.label}</div>
-              <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2 }}>{d.desc}</div>
+              <div style={{ fontSize: 26 }}>{d.icon}</div>
+              <div style={{ fontSize: FS.md, fontWeight: 700, color: direction === d.id ? d.color : C.text, marginTop: 6 }}>{d.label}</div>
+              <div style={{ fontSize: FS.sm, color: C.textMuted, marginTop: 2 }}>{d.desc}</div>
             </button>
           ))}
         </div>
       </Card>
 
-      {/* Step 2: Type (filtered by direction) */}
+      {/* Step 2: Tipo */}
       {direction && (
-        <Card style={{ marginBottom: 16 }}>
+        <Card style={{ marginBottom: 14 }}>
           <label style={LBL}>Motivo</label>
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
             {availableTypes.map(t => (
-              <button key={t.id} onClick={() => setType(t.id)}
-                style={{ padding: "12px 14px", borderRadius: 8, border: `1.5px solid ${type === t.id ? C.gold : C.border}`,
+              <button key={t.id} onClick={() => { setType(t.id); setCart([]); }}
+                style={{ padding: "14px 16px", borderRadius: 8, border: `1.5px solid ${type === t.id ? C.gold : C.border}`,
                   background: type === t.id ? C.goldBg : C.white, cursor: "pointer",
                   textAlign: "left", fontFamily: FONT_BODY, transition: "all 0.15s",
                   display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 18 }}>{t.icon}</span>
-                <span style={{ fontSize: 14, fontWeight: 600, color: type === t.id ? C.gold : C.text }}>{t.label}</span>
+                <span style={{ fontSize: 20 }}>{t.icon}</span>
+                <span style={{ fontSize: FS.md, fontWeight: 600, color: type === t.id ? C.gold : C.text }}>{t.label}</span>
               </button>
             ))}
           </div>
         </Card>
       )}
 
-      {/* Step 3: Details */}
+      {/* Step 3: Detalles */}
       {type && (
-        <Card style={{ marginBottom: 16 }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            <div>
-              <label style={LBL}>Producto</label>
-              <Input value={productSearch} onChange={s => { setProductSearch(s); setProductId(""); }} placeholder="Buscar producto..." />
-              {productSearch && !productId && (
-                <div style={{ maxHeight: 200, overflowY: "auto", border: `1px solid ${C.border}`, borderRadius: 8, marginTop: 4, background: C.white, boxShadow: C.shadowHover }}>
-                  {filteredProducts.slice(0, 20).map(p => (
-                    <div key={p.id} onClick={() => { setProductId(p.id.toString()); setProductSearch(p.name); }}
-                      style={{ padding: "10px 14px", cursor: "pointer", borderBottom: `1px solid ${C.borderLight}`,
-                        fontSize: 13, display: "flex", justifyContent: "space-between", transition: "background 0.1s" }}
-                      onMouseEnter={e => e.currentTarget.style.background = C.bg}
-                      onMouseLeave={e => e.currentTarget.style.background = C.white}>
-                      <span style={{ color: C.text }}>{p.name}</span>
-                      <span style={{ color: C.textMuted, fontSize: 11 }}>{p.category}</span>
-                    </div>
-                  ))}
+        <Card style={{ marginBottom: 14 }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+
+            {/* ── PRÉSTAMO: carrito multi-producto ── */}
+            {isLoan ? (
+              <>
+                <div>
+                  <label style={LBL}>Consultora</label>
+                  <Select value={person} onChange={setPerson}
+                    options={people.length > 0 ? people.map(p => typeof p === "string" ? p : p.name) : ["(Agrega consultoras en Admin)"]}
+                    placeholder="Seleccionar consultora" />
                 </div>
-              )}
-              {productId && <div style={{ marginTop: 6, fontSize: 12, color: C.green, display: "flex", alignItems: "center", gap: 4 }}><Icon name="check" size={14} /> Seleccionado</div>}
-            </div>
-            <div>
-              <label style={LBL}>Cantidad</label>
-              <Input value={qty} onChange={v => setQty(v.replace(/[^0-9]/g, ""))} placeholder="Cantidad" />
-            </div>
-            {isTraslado ? (
-              <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 8, alignItems: "end" }}>
-                <div><label style={LBL}>Sede origen</label>
-                  <Select value={sedeFrom} onChange={setSedeFrom} options={SEDES} placeholder="Desde..." /></div>
-                <div style={{ color: C.goldMuted, paddingBottom: 14, fontSize: 18 }}>→</div>
-                <div><label style={LBL}>Sede destino</label>
-                  <Select value={sedeTo} onChange={setSedeTo} options={SEDES.filter(s => s !== sedeFrom)} placeholder="Hacia..." /></div>
-              </div>
+                <div>
+                  <label style={LBL}>Sede</label>
+                  <Select value={sede} onChange={setSede} options={SEDES} placeholder="Seleccionar sede" />
+                </div>
+                <div>
+                  <label style={LBL}>Productos del préstamo</label>
+                  <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+                    <div style={{ flex: 1, position: "relative" }}>
+                      <Input value={cartProductSearch}
+                        onChange={s => { setCartProductSearch(s); setCartProductId(""); }}
+                        placeholder="Buscar producto..." />
+                      {cartProductSearch && !cartProductId && (
+                        <div style={{ position: "absolute", top: "100%", left: 0, right: 0, zIndex: 10,
+                          maxHeight: 200, overflowY: "auto", border: `1px solid ${C.border}`, borderRadius: 8,
+                          marginTop: 4, background: C.white, boxShadow: C.shadowHover }}>
+                          {filteredProducts.slice(0, 20).map(p => (
+                            <div key={p.id} onClick={() => { setCartProductId(p.id.toString()); setCartProductSearch(p.name); }}
+                              style={{ padding: "11px 14px", cursor: "pointer", borderBottom: `1px solid ${C.borderLight}`,
+                                fontSize: FS.sm, display: "flex", justifyContent: "space-between" }}
+                              onMouseEnter={e => e.currentTarget.style.background = C.bg}
+                              onMouseLeave={e => e.currentTarget.style.background = C.white}>
+                              <span>{p.name}</span>
+                              <span style={{ color: C.textMuted, fontSize: FS.xs }}>{p.category}</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <input type="number" value={cartQty} min="1"
+                      onChange={e => setCartQty(e.target.value.replace(/[^0-9]/g, ""))}
+                      style={{ width: 72, padding: "13px 10px", borderRadius: 8, border: `1px solid ${C.border}`,
+                        fontSize: FS.base, fontFamily: FONT_BODY, textAlign: "center", outline: "none" }} />
+                    <Btn onClick={addToCart} disabled={!cartProductId} variant="secondary"
+                      style={{ padding: "13px 16px", whiteSpace: "nowrap" }}>
+                      <Icon name="plus" size={16} /> Agregar
+                    </Btn>
+                  </div>
+                  {/* Cart items */}
+                  {cart.length > 0 ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
+                      {cart.map(item => (
+                        <div key={item.productId} style={{ display: "flex", alignItems: "center", gap: 10,
+                          padding: "12px 14px", borderRadius: 8, border: `1px solid ${C.border}`, background: C.bg }}>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: FS.md, fontWeight: 500 }}>{item.name}</div>
+                          </div>
+                          <Badge color={C.yellow} bg={C.yellowBg}>{item.qty} ud.</Badge>
+                          <button onClick={() => removeFromCart(item.productId)}
+                            style={{ background: "none", border: "none", cursor: "pointer", color: C.red, padding: "2px 4px" }}>
+                            <Icon name="x" size={16} />
+                          </button>
+                        </div>
+                      ))}
+                      <div style={{ padding: "10px 14px", borderRadius: 8, background: C.yellowBg,
+                        display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span style={{ fontSize: FS.sm, color: C.yellow, fontWeight: 600 }}>Total</span>
+                        <Badge color={C.yellow} bg={C.yellowBg}>
+                          {cart.reduce((a, c) => a + c.qty, 0)} unidades
+                        </Badge>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ padding: "18px 14px", textAlign: "center", color: C.textMuted,
+                      fontSize: FS.sm, border: `1px dashed ${C.border}`, borderRadius: 8 }}>
+                      Ningún producto agregado aún
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <label style={LBL}>Notas (opcional)</label>
+                  <Input value={notes} onChange={setNotes} placeholder="Agregar nota..." />
+                </div>
+              </>
             ) : (
-              <div><label style={LBL}>Sede</label>
-                <Select value={sede} onChange={setSede} options={SEDES} placeholder="Seleccionar sede" /></div>
+              /* ── OTROS MOVIMIENTOS: flujo original ── */
+              <>
+                <div>
+                  <label style={LBL}>Producto</label>
+                  <Input value={productSearch} onChange={s => { setProductSearch(s); setProductId(""); }} placeholder="Buscar producto..." />
+                  {productSearch && !productId && (
+                    <div style={{ maxHeight: 200, overflowY: "auto", border: `1px solid ${C.border}`, borderRadius: 8, marginTop: 4, background: C.white, boxShadow: C.shadowHover }}>
+                      {filteredProducts.slice(0, 20).map(p => (
+                        <div key={p.id} onClick={() => { setProductId(p.id.toString()); setProductSearch(p.name); }}
+                          style={{ padding: "11px 14px", cursor: "pointer", borderBottom: `1px solid ${C.borderLight}`,
+                            fontSize: FS.sm, display: "flex", justifyContent: "space-between" }}
+                          onMouseEnter={e => e.currentTarget.style.background = C.bg}
+                          onMouseLeave={e => e.currentTarget.style.background = C.white}>
+                          <span>{p.name}</span>
+                          <span style={{ color: C.textMuted, fontSize: FS.xs }}>{p.category}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {productId && <div style={{ marginTop: 6, fontSize: FS.sm, color: C.green, display: "flex", alignItems: "center", gap: 4 }}><Icon name="check" size={15} /> Seleccionado</div>}
+                </div>
+                <div>
+                  <label style={LBL}>Cantidad</label>
+                  <Input value={qty} onChange={v => setQty(v.replace(/[^0-9]/g, ""))} placeholder="Cantidad" />
+                </div>
+                {isTraslado ? (
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr auto 1fr", gap: 8, alignItems: "end" }}>
+                    <div><label style={LBL}>Sede origen</label>
+                      <Select value={sedeFrom} onChange={setSedeFrom} options={SEDES} placeholder="Desde..." /></div>
+                    <div style={{ color: C.goldMuted, paddingBottom: 16, fontSize: 20 }}>→</div>
+                    <div><label style={LBL}>Sede destino</label>
+                      <Select value={sedeTo} onChange={setSedeTo} options={SEDES.filter(s => s !== sedeFrom)} placeholder="Hacia..." /></div>
+                  </div>
+                ) : (
+                  <div><label style={LBL}>Sede</label>
+                    <Select value={sede} onChange={setSede} options={SEDES} placeholder="Seleccionar sede" /></div>
+                )}
+                {needsPerson && (
+                  <div><label style={LBL}>{type === "prestamo" ? "Prestado a" : "Devuelto por"}</label>
+                    <Select value={person} onChange={setPerson}
+                      options={people.length > 0 ? people.map(p => typeof p === "string" ? p : p.name) : ["(Agrega consultoras en Admin)"]}
+                      placeholder="Seleccionar consultora" /></div>
+                )}
+                <div><label style={LBL}>Notas (opcional)</label>
+                  <Input value={notes} onChange={setNotes} placeholder="Agregar nota..." /></div>
+              </>
             )}
-            {needsPerson && (
-              <div><label style={LBL}>{type === "prestamo" ? "Prestado a" : "Devuelto por"}</label>
-                <Select value={person} onChange={setPerson} options={people.length > 0 ? people.map(p => typeof p === "string" ? p : p.name) : ["(Agrega consultoras en Admin)"]} placeholder="Seleccionar consultora" /></div>
-            )}
-            <div><label style={LBL}>Notas (opcional)</label>
-              <Input value={notes} onChange={setNotes} placeholder="Agregar nota..." /></div>
           </div>
         </Card>
       )}
+
       {type && (
-        <Btn onClick={handleSubmit}
-          disabled={!type || !productId || !qty || (!isTraslado && !sede) || (isTraslado && (!sedeFrom || !sedeTo)) || (needsPerson && !person)}
-          style={{ width: "100%", padding: "14px 20px", fontSize: 14, borderRadius: 10 }}>
-          <Icon name="check" size={16} /> Registrar {direction === "ingreso" ? "ingreso" : "egreso"}
+        <Btn onClick={handleSubmit} disabled={isSubmitDisabled}
+          style={{ width: "100%", padding: "16px 20px", fontSize: FS.md, borderRadius: 10 }}>
+          <Icon name="check" size={18} /> Registrar {direction === "ingreso" ? "ingreso" : "egreso"}
         </Btn>
       )}
     </div>
@@ -880,29 +992,44 @@ function MoveView({ products, people, movements, user, addMovement }) {
 }
 
 // ═══════════════════════════════════════════════
-// LOANS VIEW
+// LOANS VIEW — ← MODIFICADO: agrupado por loanId + devolución con checkboxes
 // ═══════════════════════════════════════════════
-function LoansView({ products, movements, addMovement, currentUser, can }) {
+function LoansView({ products, movements, addMovements, currentUser, can }) {
   const [search, setSearch] = useState("");
   const [showReturn, setShowReturn] = useState(null);
   const [showDelete, setShowDelete] = useState(null);
-  const [returnQty, setReturnQty] = useState("");
   const [returnSede, setReturnSede] = useState("");
   const [returnNote, setReturnNote] = useState("");
   const [deleteNote, setDeleteNote] = useState("");
   const [success, setSuccess] = useState("");
+  const [checkedAll, setCheckedAll] = useState(true);
+  const [checkedItems, setCheckedItems] = useState({});
+  const [returnQtys, setReturnQtys] = useState({});
 
   const canDelete = currentUser?.role === "admin" || currentUser?.role === "directora";
 
+  // ← NUEVO: agrupa por loanId. Préstamos legacy (sin loanId) → cada uno como grupo individual
   const activeLoans = useMemo(() => {
-    const loans = {};
-    movements.filter(m => (m.type === "prestamo" || m.type === "devolucion") && m.person).forEach(m => {
-      const key = `${m.productId}-${m.person}`;
-      if (!loans[key]) loans[key] = { productId: m.productId, person: m.person, qty: 0, firstDate: m.date };
-      if (m.type === "prestamo") loans[key].qty += m.qty;
-      if (m.type === "devolucion") loans[key].qty -= m.qty;
-    });
-    return Object.values(loans).filter(l => l.qty > 0);
+    const byLoan = {};
+    movements
+      .filter(m => (m.type === "prestamo" || m.type === "devolucion") && m.person)
+      .forEach(m => {
+        const key = m.loanId
+          ? m.loanId
+          : `legacy-${m.productId}-${m.person}`;
+        if (!byLoan[key]) byLoan[key] = { loanId: key, person: m.person, date: m.date, items: {} };
+        const pid = m.productId;
+        if (!byLoan[key].items[pid]) byLoan[key].items[pid] = 0;
+        byLoan[key].items[pid] += m.type === "prestamo" ? m.qty : -m.qty;
+      });
+    return Object.values(byLoan)
+      .map(loan => ({
+        ...loan,
+        items: Object.entries(loan.items)
+          .filter(([, qty]) => qty > 0)
+          .map(([productId, qty]) => ({ productId: Number(productId), qty })),
+      }))
+      .filter(loan => loan.items.length > 0);
   }, [movements]);
 
   const filtered = useMemo(() => {
@@ -911,108 +1038,150 @@ function LoansView({ products, movements, addMovement, currentUser, can }) {
     return activeLoans.filter(l => l.person?.toLowerCase().includes(s));
   }, [activeLoans, search]);
 
-  const allPeople = [...new Set(activeLoans.map(l => l.person))];
-
   const openReturn = (loan) => {
-    setReturnQty(String(loan.qty));
+    const initChecked = {};
+    const initQtys = {};
+    loan.items.forEach(item => {
+      initChecked[item.productId] = true;
+      initQtys[item.productId] = item.qty;
+    });
+    setCheckedAll(true);
+    setCheckedItems(initChecked);
+    setReturnQtys(initQtys);
     setReturnSede("");
     setReturnNote("");
     setShowReturn(loan);
   };
 
-  const handleReturn = async () => {
-    if (!returnQty || !returnSede || !showReturn) return;
-    await addMovement({
-      id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-      productId: showReturn.productId, type: "devolucion", qty: parseInt(returnQty),
-      sede: returnSede, person: showReturn.person, notes: returnNote,
-      operator: currentUser.name, date: new Date().toISOString(),
-    });
-    setShowReturn(null);
-    setSuccess("Devolución registrada");
-    setTimeout(() => setSuccess(""), 2000);
+  const toggleAll = (val) => {
+    setCheckedAll(val);
+    const updated = {};
+    showReturn.items.forEach(item => { updated[item.productId] = val; });
+    setCheckedItems(updated);
   };
 
-  const openDelete = (loan) => {
-    setDeleteNote("");
-    setShowDelete(loan);
+  const toggleItem = (productId, val) => {
+    const updated = { ...checkedItems, [productId]: val };
+    setCheckedItems(updated);
+    setCheckedAll(Object.values(updated).every(Boolean));
   };
+
+  const selectedCount = Object.values(checkedItems).filter(Boolean).length;
+  const selectedUnits = showReturn
+    ? showReturn.items.filter(i => checkedItems[i.productId]).reduce((a, i) => a + (returnQtys[i.productId] || 0), 0)
+    : 0;
+
+  const handleReturn = async () => {
+    if (!returnSede || !showReturn || selectedCount === 0) return;
+    const now = new Date().toISOString();
+    const returnLoanId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const movs = showReturn.items
+      .filter(item => checkedItems[item.productId])
+      .map(item => ({
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+        productId: item.productId, type: "devolucion",
+        qty: returnQtys[item.productId] || item.qty,
+        sede: returnSede, person: showReturn.person,
+        notes: returnNote, operator: currentUser.name,
+        date: now, loanId: returnLoanId,
+      }));
+    await addMovements(movs);
+    setShowReturn(null);
+    setSuccess("Devolución registrada");
+    setTimeout(() => setSuccess(""), 2500);
+  };
+
+  const openDelete = (loan) => { setDeleteNote(""); setShowDelete(loan); };
 
   const handleDelete = async () => {
     if (!deleteNote || !showDelete) return;
-    await addMovement({
+    const now = new Date().toISOString();
+    const delLoanId = Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+    const movs = showDelete.items.map(item => ({
       id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-      productId: showDelete.productId, type: "devolucion", qty: showDelete.qty,
+      productId: item.productId, type: "devolucion", qty: item.qty,
       sede: "Mariscal Cáceres", person: showDelete.person,
       notes: `[ELIMINADO] ${deleteNote}`,
-      operator: currentUser.name, date: new Date().toISOString(),
-    });
+      operator: currentUser.name, date: now, loanId: delLoanId,
+    }));
+    await addMovements(movs);
     setShowDelete(null);
     setSuccess("Préstamo eliminado");
-    setTimeout(() => setSuccess(""), 2000);
+    setTimeout(() => setSuccess(""), 2500);
   };
 
-  const LBL = { fontSize: 11, color: C.textMuted, marginBottom: 6, display: "block", textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 };
-
   return (
-    <div style={{ marginTop: 24 }}>
+    <div style={{ marginTop: 26 }}>
       <SectionTitle>Préstamos Pendientes</SectionTitle>
 
       {success && (
-        <div style={{ padding: "12px 16px", borderRadius: 8, background: C.greenBg, color: C.green,
-          fontSize: 14, fontWeight: 600, marginBottom: 16, textAlign: "center" }}>{success}</div>
+        <div style={{ padding: "14px 18px", borderRadius: 8, background: C.greenBg, color: C.green,
+          fontSize: FS.md, fontWeight: 600, marginBottom: 18, textAlign: "center" }}>{success}</div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14, marginBottom: 20 }}>
-        <Card style={{ padding: "18px 16px", textAlign: "center", borderLeft: `3px solid ${C.yellow}` }}>
-          <div style={{ fontSize: 32, fontWeight: 600, color: C.yellow, fontFamily: FONT_NUM }}>{activeLoans.length}</div>
-          <div style={{ fontSize: 12, color: C.textMuted, fontWeight: 600, letterSpacing: 0.3, textTransform: "uppercase" }}>Préstamos activos</div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14, marginBottom: 22 }}>
+        <Card style={{ padding: "20px 18px", textAlign: "center", borderLeft: `3px solid ${C.yellow}` }}>
+          <div style={{ fontSize: 36, fontWeight: 600, color: C.yellow, fontFamily: FONT_NUM }}>{activeLoans.length}</div>
+          <div style={{ fontSize: FS.xs, color: C.textMuted, fontWeight: 600, letterSpacing: 0.3, textTransform: "uppercase", marginTop: 4 }}>Préstamos activos</div>
         </Card>
-        <Card style={{ padding: "18px 16px", textAlign: "center", borderLeft: `3px solid ${C.yellow}` }}>
-          <div style={{ fontSize: 32, fontWeight: 600, color: C.yellow, fontFamily: FONT_NUM }}>{activeLoans.reduce((a, l) => a + l.qty, 0)}</div>
-          <div style={{ fontSize: 12, color: C.textMuted, fontWeight: 600, letterSpacing: 0.3, textTransform: "uppercase" }}>Unidades prestadas</div>
+        <Card style={{ padding: "20px 18px", textAlign: "center", borderLeft: `3px solid ${C.yellow}` }}>
+          <div style={{ fontSize: 36, fontWeight: 600, color: C.yellow, fontFamily: FONT_NUM }}>
+            {activeLoans.reduce((a, l) => a + l.items.reduce((b, i) => b + i.qty, 0), 0)}
+          </div>
+          <div style={{ fontSize: FS.xs, color: C.textMuted, fontWeight: 600, letterSpacing: 0.3, textTransform: "uppercase", marginTop: 4 }}>Unidades prestadas</div>
         </Card>
       </div>
 
-      <div style={{ position: "relative", marginBottom: 16 }}>
-        <div style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: C.textMuted }}><Icon name="search" size={16} /></div>
-        <Input value={search} onChange={setSearch} placeholder="Buscar por nombre de consultora..." style={{ paddingLeft: 40 }} />
+      <div style={{ position: "relative", marginBottom: 18 }}>
+        <div style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", color: C.textMuted }}><Icon name="search" size={18} /></div>
+        <Input value={search} onChange={setSearch} placeholder="Buscar por nombre de consultora..." style={{ paddingLeft: 44 }} />
       </div>
 
       {filtered.length === 0 ? (
-        <div style={{ textAlign: "center", padding: 50, color: C.textMuted }}>
+        <div style={{ textAlign: "center", padding: 50, color: C.textMuted, fontSize: FS.base }}>
           {activeLoans.length === 0 ? "No hay préstamos pendientes" : "No se encontraron préstamos para esta consultora"}
         </div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {filtered.map((l, i) => {
-            const prod = products.find(p => p.id === l.productId);
-            const days = Math.floor((Date.now() - new Date(l.firstDate).getTime()) / 86400000);
+        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+          {filtered.map((loan) => {
+            const days = Math.floor((Date.now() - new Date(loan.date).getTime()) / 86400000);
+            const totalUnits = loan.items.reduce((a, i) => a + i.qty, 0);
             return (
-              <Card key={i} style={{ padding: "16px 18px" }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: 15, color: C.text }}>{prod?.name || "?"}</div>
-                    <div style={{ fontSize: 13, color: C.textMuted, marginTop: 3 }}>
-                      Prestado a <span style={{ color: C.gold, fontWeight: 600 }}>{l.person}</span>
-                    </div>
-                    <div style={{ fontSize: 11, color: days > 14 ? C.red : C.textMuted, marginTop: 2, fontWeight: days > 14 ? 600 : 400 }}>
+              <Card key={loan.loanId} style={{ padding: "18px 20px" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 12 }}>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: FS.lg, color: C.text }}>{loan.person}</div>
+                    <div style={{ fontSize: FS.sm, color: days > 14 ? C.red : C.textMuted, marginTop: 3, fontWeight: days > 14 ? 600 : 400 }}>
                       {days > 14 ? `⚠ ${days} días` : `${days} días`}
                     </div>
                   </div>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 6 }}>
-                    <Badge color={C.yellow} bg={C.yellowBg}>{l.qty} ud.</Badge>
-                    <div style={{ display: "flex", gap: 6 }}>
-                      <button onClick={() => openReturn(l)}
-                        style={{ background: C.greenBg, border: `1px solid ${C.green}33`, borderRadius: 6, padding: "5px 12px",
-                          color: C.green, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: FONT_BODY }}>Devolver</button>
-                      {canDelete && (
-                        <button onClick={() => openDelete(l)}
-                          style={{ background: C.redBg, border: `1px solid ${C.red}33`, borderRadius: 6, padding: "5px 12px",
-                            color: C.red, fontSize: 12, fontWeight: 600, cursor: "pointer", fontFamily: FONT_BODY }}>Eliminar</button>
-                      )}
-                    </div>
-                  </div>
+                  <Badge color={C.yellow} bg={C.yellowBg}>{totalUnits} ud.</Badge>
+                </div>
+                {/* Items del préstamo */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 5, marginBottom: 14 }}>
+                  {loan.items.map(item => {
+                    const prod = products.find(p => p.id === item.productId);
+                    return (
+                      <div key={item.productId} style={{ display: "flex", justifyContent: "space-between",
+                        alignItems: "center", padding: "8px 0",
+                        borderBottom: `1px solid ${C.borderLight}` }}>
+                        <span style={{ fontSize: FS.md, color: C.text }}>{prod?.name || "?"}</span>
+                        <span style={{ fontSize: FS.sm, color: C.textMuted }}>{prod?.category} · {item.qty} ud.</span>
+                      </div>
+                    );
+                  })}
+                </div>
+                <div style={{ display: "flex", gap: 8 }}>
+                  <button onClick={() => openReturn(loan)}
+                    style={{ flex: 1, background: C.greenBg, border: `1px solid ${C.green}33`, borderRadius: 8,
+                      padding: "11px 16px", color: C.green, fontSize: FS.base, fontWeight: 600,
+                      cursor: "pointer", fontFamily: FONT_BODY }}>Devolver</button>
+                  {canDelete && (
+                    <button onClick={() => openDelete(loan)}
+                      style={{ background: C.redBg, border: `1px solid ${C.red}33`, borderRadius: 8,
+                        padding: "11px 16px", color: C.red, fontSize: FS.base, fontWeight: 600,
+                        cursor: "pointer", fontFamily: FONT_BODY }}>Eliminar</button>
+                  )}
                 </div>
               </Card>
             );
@@ -1020,45 +1189,118 @@ function LoansView({ products, movements, addMovement, currentUser, can }) {
         </div>
       )}
 
-      {/* Return Modal */}
+      {/* ── Modal Devolución con checkboxes ── */}
       <Modal open={showReturn !== null} onClose={() => setShowReturn(null)} title="Registrar Devolución">
         {showReturn && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div style={{ padding: "12px 14px", borderRadius: 8, background: C.bg, border: `1px solid ${C.borderLight}` }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{products.find(p => p.id === showReturn.productId)?.name}</div>
-              <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>Prestado a {showReturn.person} · {showReturn.qty} ud.</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            {/* Resumen */}
+            <div style={{ padding: "14px 16px", borderRadius: 8, background: C.bg, border: `1px solid ${C.borderLight}` }}>
+              <div style={{ fontSize: FS.md, fontWeight: 600, color: C.text }}>{showReturn.person}</div>
+              <div style={{ fontSize: FS.sm, color: C.textMuted, marginTop: 2 }}>
+                {showReturn.items.length} producto{showReturn.items.length !== 1 ? "s" : ""} · {showReturn.items.reduce((a, i) => a + i.qty, 0)} ud. totales
+              </div>
             </div>
-            <div><label style={LBL}>Cantidad a devolver</label>
-              <Input value={returnQty} onChange={v => setReturnQty(v.replace(/[^0-9]/g, ""))} placeholder="Cantidad" /></div>
-            <div><label style={LBL}>Sede donde se devuelve</label>
-              <Select value={returnSede} onChange={setReturnSede} options={SEDES} placeholder="Seleccionar sede" /></div>
-            <div><label style={LBL}>Nota (opcional)</label>
-              <Input value={returnNote} onChange={setReturnNote} placeholder="Agregar nota..." /></div>
-            <div style={{ fontSize: 12, color: C.textMuted }}>Registrado por: <strong>{currentUser?.name}</strong> · {new Date().toLocaleDateString("es-PE")}</div>
-            <Btn onClick={handleReturn} disabled={!returnQty || !returnSede} style={{ width: "100%" }}>
-              <Icon name="check" size={16} /> Confirmar devolución
+
+            {/* Checkbox seleccionar todos */}
+            <label style={{ display: "flex", alignItems: "center", gap: 12, padding: "14px 16px",
+              borderRadius: 8, background: C.goldBg, border: `1px solid ${C.goldMuted}33`, cursor: "pointer" }}>
+              <input type="checkbox" checked={checkedAll}
+                onChange={e => toggleAll(e.target.checked)}
+                style={{ width: 18, height: 18, accentColor: C.gold, cursor: "pointer", flexShrink: 0 }} />
+              <div>
+                <div style={{ fontSize: FS.md, fontWeight: 600, color: C.text }}>Devolver todo el préstamo</div>
+                <div style={{ fontSize: FS.sm, color: C.textMuted, marginTop: 1 }}>Marca todos los productos</div>
+              </div>
+            </label>
+
+            <div style={{ height: 1, background: C.border }} />
+
+            {/* Items individuales */}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {showReturn.items.map(item => {
+                const prod = products.find(p => p.id === item.productId);
+                const isChecked = checkedItems[item.productId] ?? true;
+                return (
+                  <div key={item.productId} style={{ display: "flex", alignItems: "center", gap: 12,
+                    padding: "13px 16px", borderRadius: 8, border: `1px solid ${C.border}`,
+                    background: isChecked ? C.white : C.bg, transition: "background 0.1s" }}>
+                    <input type="checkbox" checked={isChecked}
+                      onChange={e => toggleItem(item.productId, e.target.checked)}
+                      style={{ width: 18, height: 18, accentColor: C.gold, cursor: "pointer", flexShrink: 0 }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: FS.md, fontWeight: 500, color: isChecked ? C.text : C.textMuted }}>{prod?.name || "?"}</div>
+                      <div style={{ fontSize: FS.sm, color: C.textMuted, marginTop: 2 }}>{prod?.category}</div>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                      <span style={{ fontSize: FS.sm, color: C.textMuted }}>Cant.:</span>
+                      <input type="number"
+                        value={returnQtys[item.productId] ?? item.qty}
+                        min={1} max={item.qty}
+                        disabled={!isChecked}
+                        onChange={e => setReturnQtys({ ...returnQtys, [item.productId]: Math.min(item.qty, Math.max(1, parseInt(e.target.value) || 1)) })}
+                        style={{ width: 68, padding: "8px 10px", borderRadius: 8, border: `1px solid ${C.border}`,
+                          fontSize: FS.base, fontFamily: FONT_BODY, textAlign: "center", outline: "none",
+                          opacity: isChecked ? 1 : 0.4 }} />
+                      <span style={{ fontSize: FS.sm, color: C.textMuted }}>/ {item.qty}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Sede */}
+            <div>
+              <label style={LBL}>Sede donde se devuelve</label>
+              <Select value={returnSede} onChange={setReturnSede} options={SEDES} placeholder="Seleccionar sede" />
+            </div>
+            <div>
+              <label style={LBL}>Nota (opcional)</label>
+              <Input value={returnNote} onChange={setReturnNote} placeholder="Agregar nota..." />
+            </div>
+
+            {/* Resumen selección */}
+            {selectedCount > 0 && (
+              <div style={{ padding: "10px 14px", borderRadius: 8, background: C.greenBg,
+                fontSize: FS.sm, color: C.green, fontWeight: 600 }}>
+                Devolviendo {selectedCount} producto{selectedCount !== 1 ? "s" : ""} · {selectedUnits} unidad{selectedUnits !== 1 ? "es" : ""}
+              </div>
+            )}
+
+            <div style={{ fontSize: FS.sm, color: C.textMuted }}>Registrado por: <strong>{currentUser?.name}</strong> · {new Date().toLocaleDateString("es-PE")}</div>
+            <Btn onClick={handleReturn} disabled={!returnSede || selectedCount === 0} style={{ width: "100%" }}>
+              <Icon name="check" size={18} /> Confirmar devolución
             </Btn>
           </div>
         )}
       </Modal>
 
-      {/* Delete Modal (admin/directora only) */}
+      {/* ── Modal Eliminar ── */}
       <Modal open={showDelete !== null} onClose={() => setShowDelete(null)} title="Eliminar Préstamo">
         {showDelete && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-            <div style={{ padding: "12px 14px", borderRadius: 8, background: C.redBg, border: `1px solid ${C.red}22` }}>
-              <div style={{ fontSize: 13, color: C.red, fontWeight: 600 }}>Esto eliminará el préstamo sin registrar una devolución real.</div>
-              <div style={{ fontSize: 12, color: C.red, marginTop: 4, opacity: 0.8 }}>Se registrará como devolución con nota [ELIMINADO].</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+            <div style={{ padding: "14px 16px", borderRadius: 8, background: C.redBg, border: `1px solid ${C.red}22` }}>
+              <div style={{ fontSize: FS.sm, color: C.red, fontWeight: 600 }}>Esto eliminará el préstamo completo.</div>
+              <div style={{ fontSize: FS.sm, color: C.red, marginTop: 4, opacity: 0.8 }}>Se registrará como devolución con nota [ELIMINADO].</div>
             </div>
-            <div style={{ padding: "12px 14px", borderRadius: 8, background: C.bg }}>
-              <div style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{products.find(p => p.id === showDelete.productId)?.name}</div>
-              <div style={{ fontSize: 12, color: C.textMuted, marginTop: 2 }}>Prestado a {showDelete.person} · {showDelete.qty} ud.</div>
+            <div style={{ padding: "14px 16px", borderRadius: 8, background: C.bg }}>
+              <div style={{ fontSize: FS.md, fontWeight: 600, color: C.text, marginBottom: 8 }}>{showDelete.person}</div>
+              {showDelete.items.map(item => {
+                const prod = products.find(p => p.id === item.productId);
+                return (
+                  <div key={item.productId} style={{ fontSize: FS.sm, color: C.textMuted, display: "flex", justifyContent: "space-between", padding: "4px 0" }}>
+                    <span>{prod?.name || "?"}</span>
+                    <span>{item.qty} ud.</span>
+                  </div>
+                );
+              })}
             </div>
-            <div><label style={LBL}>Motivo de eliminación *</label>
-              <Input value={deleteNote} onChange={setDeleteNote} placeholder="Escribe el motivo..." /></div>
-            <div style={{ fontSize: 12, color: C.textMuted }}>Eliminado por: <strong>{currentUser?.name}</strong></div>
+            <div>
+              <label style={LBL}>Motivo de eliminación *</label>
+              <Input value={deleteNote} onChange={setDeleteNote} placeholder="Escribe el motivo..." />
+            </div>
+            <div style={{ fontSize: FS.sm, color: C.textMuted }}>Eliminado por: <strong>{currentUser?.name}</strong></div>
             <Btn onClick={handleDelete} disabled={!deleteNote} variant="danger" style={{ width: "100%" }}>
-              Eliminar préstamo
+              Eliminar préstamo completo
             </Btn>
           </div>
         )}
@@ -1095,55 +1337,54 @@ function HistoryView({ products, movements, removeMovement, currentUser }) {
   };
 
   return (
-    <div style={{ marginTop: 24 }}>
+    <div style={{ marginTop: 26 }}>
       <SectionTitle>Historial de Movimientos</SectionTitle>
-
       {success && (
-        <div style={{ padding: "12px 16px", borderRadius: 8, background: C.greenBg, color: C.green,
-          fontSize: 14, fontWeight: 600, marginBottom: 16, textAlign: "center" }}>{success}</div>
+        <div style={{ padding: "14px 18px", borderRadius: 8, background: C.greenBg, color: C.green,
+          fontSize: FS.md, fontWeight: 600, marginBottom: 18, textAlign: "center" }}>{success}</div>
       )}
-
-      <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 18, flexWrap: "wrap" }}>
         <Select value={filterType} onChange={setFilterType} options={MOVE_TYPES.filter(t => t.group !== "_legacy").map(t => ({ value: t.id, label: t.label }))} placeholder="Tipo" style={{ flex: 1, minWidth: 140 }} />
         <Select value={filterOperator} onChange={setFilterOperator} options={operators} placeholder="Operadora" style={{ flex: 1, minWidth: 140 }} />
       </div>
       {sorted.length === 0 ? (
-        <div style={{ textAlign: "center", padding: 50, color: C.textMuted }}>No hay movimientos registrados</div>
+        <div style={{ textAlign: "center", padding: 50, color: C.textMuted, fontSize: FS.base }}>No hay movimientos registrados</div>
       ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 7 }}>
           {sorted.slice(0, 50).map(m => {
             const prod = products.find(p => p.id === m.productId);
             const type = MOVE_TYPES.find(t => t.id === m.type);
             const d = new Date(m.date);
             return (
-              <Card key={m.id} style={{ padding: "12px 16px" }}>
+              <Card key={m.id} style={{ padding: "14px 18px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                   <div style={{ flex: 1 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <span style={{ fontSize: 16 }}>{type?.icon}</span>
-                      <span style={{ fontWeight: 600, fontSize: 14, color: C.text }}>{prod?.name || "?"}</span>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: type?.color || C.text }}>
+                      <span style={{ fontSize: 18 }}>{type?.icon}</span>
+                      <span style={{ fontWeight: 600, fontSize: FS.md, color: C.text }}>{prod?.name || "?"}</span>
+                      <span style={{ fontSize: FS.md, fontWeight: 700, color: type?.color || C.text }}>
                         {type?.dir === 1 ? "+" : type?.dir === -1 ? "−" : "⇄"}{m.qty}
                       </span>
                     </div>
-                    <div style={{ fontSize: 11, color: C.textMuted, marginTop: 3, display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <div style={{ fontSize: FS.sm, color: C.textMuted, marginTop: 4, display: "flex", gap: 8, flexWrap: "wrap" }}>
                       <span>{type?.label}</span>
                       {m.sede && <span>· {m.sede}</span>}
                       {m.sedeFrom && <span>· {m.sedeFrom} → {m.sedeTo}</span>}
                       {m.person && <span>· {m.person}</span>}
+                      {m.loanId && <span style={{ color: C.goldMuted }}>· #{m.loanId.slice(-4)}</span>}
                     </div>
-                    {m.notes && <div style={{ fontSize: 11, color: C.textMuted, marginTop: 2, fontStyle: "italic" }}>"{m.notes}"</div>}
+                    {m.notes && <div style={{ fontSize: FS.sm, color: C.textMuted, marginTop: 3, fontStyle: "italic" }}>"{m.notes}"</div>}
                   </div>
                   <div style={{ textAlign: "right", flexShrink: 0, display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
                     <div>
-                      <div style={{ fontSize: 12, color: C.textSecondary }}>{d.toLocaleDateString("es-PE", { day: "2-digit", month: "short" })}</div>
-                      <div style={{ fontSize: 11, color: C.textMuted }}>{d.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" })}</div>
-                      <div style={{ fontSize: 11, color: C.gold, marginTop: 2, fontWeight: 600 }}>{m.operator}</div>
+                      <div style={{ fontSize: FS.sm, color: C.textSecondary }}>{d.toLocaleDateString("es-PE", { day: "2-digit", month: "short" })}</div>
+                      <div style={{ fontSize: FS.xs, color: C.textMuted }}>{d.toLocaleTimeString("es-PE", { hour: "2-digit", minute: "2-digit" })}</div>
+                      <div style={{ fontSize: FS.xs, color: C.gold, marginTop: 2, fontWeight: 600 }}>{m.operator}</div>
                     </div>
                     {canDelete && (
                       <button onClick={() => setConfirmDelete(m)}
                         style={{ background: "none", border: "none", cursor: "pointer", color: C.red,
-                          fontSize: 11, fontFamily: FONT_BODY, fontWeight: 600, padding: "2px 0" }}>Eliminar</button>
+                          fontSize: FS.sm, fontFamily: FONT_BODY, fontWeight: 600, padding: "2px 0" }}>Eliminar</button>
                     )}
                   </div>
                 </div>
@@ -1152,28 +1393,26 @@ function HistoryView({ products, movements, removeMovement, currentUser }) {
           })}
         </div>
       )}
-
       <Modal open={confirmDelete !== null} onClose={() => setConfirmDelete(null)} title="Eliminar Movimiento">
         {confirmDelete && (() => {
           const prod = products.find(p => p.id === confirmDelete.productId);
           const type = MOVE_TYPES.find(t => t.id === confirmDelete.type);
           return (
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div style={{ padding: "12px 14px", borderRadius: 8, background: C.redBg, border: `1px solid ${C.red}22` }}>
-                <div style={{ fontSize: 13, color: C.red, fontWeight: 600 }}>Esta acción no se puede deshacer.</div>
-                <div style={{ fontSize: 12, color: C.red, marginTop: 4, opacity: 0.8 }}>El movimiento será eliminado permanentemente del historial y del Google Sheet.</div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ padding: "14px 16px", borderRadius: 8, background: C.redBg, border: `1px solid ${C.red}22` }}>
+                <div style={{ fontSize: FS.sm, color: C.red, fontWeight: 600 }}>Esta acción no se puede deshacer.</div>
               </div>
-              <div style={{ padding: "12px 14px", borderRadius: 8, background: C.bg }}>
+              <div style={{ padding: "14px 16px", borderRadius: 8, background: C.bg }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{ fontSize: 16 }}>{type?.icon}</span>
-                  <span style={{ fontSize: 14, fontWeight: 600, color: C.text }}>{prod?.name || "?"}</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: type?.color }}>{type?.dir === 1 ? "+" : type?.dir === -1 ? "−" : "⇄"}{confirmDelete.qty}</span>
+                  <span style={{ fontSize: 18 }}>{type?.icon}</span>
+                  <span style={{ fontSize: FS.md, fontWeight: 600, color: C.text }}>{prod?.name || "?"}</span>
+                  <span style={{ fontSize: FS.md, fontWeight: 700, color: type?.color }}>{type?.dir === 1 ? "+" : type?.dir === -1 ? "−" : "⇄"}{confirmDelete.qty}</span>
                 </div>
-                <div style={{ fontSize: 12, color: C.textMuted, marginTop: 4 }}>
+                <div style={{ fontSize: FS.sm, color: C.textMuted, marginTop: 4 }}>
                   {type?.label} · {new Date(confirmDelete.date).toLocaleDateString("es-PE")} · por {confirmDelete.operator}
                 </div>
               </div>
-              <div style={{ fontSize: 12, color: C.textMuted }}>Eliminado por: <strong>{currentUser?.name}</strong></div>
+              <div style={{ fontSize: FS.sm, color: C.textMuted }}>Eliminado por: <strong>{currentUser?.name}</strong></div>
               <Btn onClick={handleDelete} variant="danger" style={{ width: "100%" }}>Eliminar movimiento</Btn>
             </div>
           );
@@ -1228,9 +1467,7 @@ function AdminView({ products, people, operators, categories, currentUser, can,
     await updateProduct({ ...orig, name: editProd.name, category: editProd.category, code: editProd.code, price: editProd.price });
     setShowEditProduct(null);
   };
-  const handleToggleProduct = async (p) => {
-    await updateProduct({ ...p, active: !p.active });
-  };
+  const handleToggleProduct = async (p) => { await updateProduct({ ...p, active: !p.active }); };
   const handleAddPerson = async () => {
     if (!newPerson.name || people.find(p => p.name === newPerson.name)) return;
     await addConsultora(newPerson);
@@ -1270,9 +1507,7 @@ function AdminView({ products, people, operators, categories, currentUser, can,
     if (!newCategory || categories.includes(newCategory)) return;
     await addCategoria(newCategory); setNewCategory(""); setShowAddCategory(false);
   };
-  const openEditCategory = (cat, idx) => {
-    setEditCatName(cat); setShowEditCategory(idx);
-  };
+  const openEditCategory = (cat, idx) => { setEditCatName(cat); setShowEditCategory(idx); };
   const handleEditCategory = async () => {
     if (!editCatName || (editCatName !== categories[showEditCategory] && categories.includes(editCatName))) return;
     const oldName = categories[showEditCategory];
@@ -1284,94 +1519,73 @@ function AdminView({ products, people, operators, categories, currentUser, can,
   };
   const handleRemoveCategory = async (i, cat) => {
     const count = products.filter(p => p.category === cat).length;
-    if (count > 0) {
-      await bulkUpdateProducts(products.map(p => p.category === cat ? { ...p, category: "Sin categoría" } : p));
-    }
+    if (count > 0) await bulkUpdateProducts(products.map(p => p.category === cat ? { ...p, category: "Sin categoría" } : p));
     await removeCategoria(i);
   };
 
   const filteredProds = prodSearch ? products.filter(p => p.name.toLowerCase().includes(prodSearch.toLowerCase())) : products;
-  const LBL = { fontSize: 11, color: C.textMuted, marginBottom: 6, display: "block", textTransform: "uppercase", letterSpacing: 0.5, fontWeight: 600 };
   const tabs = [["products","Productos"],["categories","Categorías"],["people","Consultoras"]];
   if (canManageOps) tabs.push(["operators","Operadoras"]);
 
   return (
-    <div style={{ marginTop: 24 }}>
+    <div style={{ marginTop: 26 }}>
       <SectionTitle>Administración</SectionTitle>
-      <div style={{ display: "flex", gap: 8, marginBottom: 20, flexWrap: "wrap" }}>
+      <div style={{ display: "flex", gap: 8, marginBottom: 22, flexWrap: "wrap" }}>
         {tabs.map(([t,l]) => (
           <button key={t} onClick={() => setTab(t)}
-            style={{ padding: "9px 18px", borderRadius: 8, border: `1.5px solid ${tab === t ? C.gold : C.border}`,
+            style={{ padding: "10px 20px", borderRadius: 8, border: `1.5px solid ${tab === t ? C.gold : C.border}`,
               background: tab === t ? C.goldBg : C.white, color: tab === t ? C.gold : C.textMuted,
-              cursor: "pointer", fontSize: 14, fontWeight: 600, fontFamily: FONT_BODY, letterSpacing: 0.2 }}>{l}</button>
+              cursor: "pointer", fontSize: FS.base, fontWeight: 600, fontFamily: FONT_BODY, letterSpacing: 0.2 }}>{l}</button>
         ))}
       </div>
 
-      {/* ── PRODUCTS TAB ── */}
       {tab === "products" && (
         <>
-          <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
             <Input value={prodSearch} onChange={setProdSearch} placeholder="Buscar producto..." style={{ flex: 1 }} />
-            <Btn onClick={() => setShowAddProduct(true)}><Icon name="plus" size={16} /> Agregar</Btn>
+            <Btn onClick={() => setShowAddProduct(true)}><Icon name="plus" size={17} /> Agregar</Btn>
           </div>
-          <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 8, fontWeight: 500 }}>
+          <div style={{ fontSize: FS.sm, color: C.textMuted, marginBottom: 10, fontWeight: 500 }}>
             {products.filter(p => p.active).length} activos · {products.filter(p => !p.active).length} inactivos
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 480, overflowY: "auto" }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5, maxHeight: 480, overflowY: "auto" }}>
             {filteredProds.map(p => (
-              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",
+              <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "12px 16px",
                 borderRadius: 8, background: C.white, border: `1px solid ${C.border}`, opacity: p.active ? 1 : 0.5 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: 14, fontWeight: 500, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  <div style={{ fontSize: FS.base, fontWeight: 500, color: C.text, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                     {p.name}
-                    {!p.active && <span style={{ fontSize: 11, color: C.textMuted, fontWeight: 400, marginLeft: 6 }}>(inactivo)</span>}
+                    {!p.active && <span style={{ fontSize: FS.xs, color: C.textMuted, fontWeight: 400, marginLeft: 6 }}>(inactivo)</span>}
                   </div>
-                  <div style={{ fontSize: 11, color: C.textMuted, display: "flex", gap: 6 }}>
+                  <div style={{ fontSize: FS.xs, color: C.textMuted, display: "flex", gap: 6 }}>
                     <span>{p.category}</span>
                     {p.code && <span>· CÓD. {p.code}</span>}
                     {p.price && <span>· S/ {p.price}</span>}
                   </div>
                 </div>
-                <button onClick={() => openEditProduct(p)}
-                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12,
-                    color: C.gold, fontFamily: FONT_BODY, fontWeight: 600 }}>Editar</button>
-                <button onClick={() => handleToggleProduct(p)}
-                  style={{ background: "none", border: "none", cursor: "pointer", fontSize: 12,
-                    color: p.active ? C.red : C.green, fontFamily: FONT_BODY, fontWeight: 600 }}>
-                  {p.active ? "Desactivar" : "Activar"}</button>
+                <button onClick={() => openEditProduct(p)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: FS.sm, color: C.gold, fontFamily: FONT_BODY, fontWeight: 600 }}>Editar</button>
+                <button onClick={() => handleToggleProduct(p)} style={{ background: "none", border: "none", cursor: "pointer", fontSize: FS.sm, color: p.active ? C.red : C.green, fontFamily: FONT_BODY, fontWeight: 600 }}>{p.active ? "Desactivar" : "Activar"}</button>
               </div>
             ))}
           </div>
-
-          {/* Add Product Modal */}
           <Modal open={showAddProduct} onClose={() => setShowAddProduct(false)} title="Agregar Producto">
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div><label style={LBL}>Nombre *</label>
-                <Input value={newProd.name} onChange={v => setNewProd({ ...newProd, name: v })} placeholder="Nombre del producto" /></div>
-              <div><label style={LBL}>Categoría *</label>
-                <Select value={newProd.category} onChange={v => setNewProd({ ...newProd, category: v })} options={categories} placeholder="Seleccionar" /></div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div><label style={LBL}>Nombre *</label><Input value={newProd.name} onChange={v => setNewProd({ ...newProd, name: v })} placeholder="Nombre del producto" /></div>
+              <div><label style={LBL}>Categoría *</label><Select value={newProd.category} onChange={v => setNewProd({ ...newProd, category: v })} options={categories} placeholder="Seleccionar" /></div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div><label style={LBL}>Código</label>
-                  <Input value={newProd.code} onChange={v => setNewProd({ ...newProd, code: v })} placeholder="CÓD." /></div>
-                <div><label style={LBL}>Precio (S/)</label>
-                  <Input value={newProd.price} onChange={v => setNewProd({ ...newProd, price: v })} placeholder="0.00" /></div>
+                <div><label style={LBL}>Código</label><Input value={newProd.code} onChange={v => setNewProd({ ...newProd, code: v })} placeholder="CÓD." /></div>
+                <div><label style={LBL}>Precio (S/)</label><Input value={newProd.price} onChange={v => setNewProd({ ...newProd, price: v })} placeholder="0.00" /></div>
               </div>
               <Btn onClick={handleAddProduct} disabled={!newProd.name || !newProd.category} style={{ width: "100%", marginTop: 8 }}>Agregar producto</Btn>
             </div>
           </Modal>
-
-          {/* Edit Product Modal */}
           <Modal open={showEditProduct !== null} onClose={() => setShowEditProduct(null)} title="Editar Producto">
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div><label style={LBL}>Nombre *</label>
-                <Input value={editProd.name} onChange={v => setEditProd({ ...editProd, name: v })} placeholder="Nombre del producto" /></div>
-              <div><label style={LBL}>Categoría *</label>
-                <Select value={editProd.category} onChange={v => setEditProd({ ...editProd, category: v })} options={categories} placeholder="Seleccionar" /></div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div><label style={LBL}>Nombre *</label><Input value={editProd.name} onChange={v => setEditProd({ ...editProd, name: v })} placeholder="Nombre del producto" /></div>
+              <div><label style={LBL}>Categoría *</label><Select value={editProd.category} onChange={v => setEditProd({ ...editProd, category: v })} options={categories} placeholder="Seleccionar" /></div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div><label style={LBL}>Código</label>
-                  <Input value={editProd.code} onChange={v => setEditProd({ ...editProd, code: v })} placeholder="CÓD." /></div>
-                <div><label style={LBL}>Precio (S/)</label>
-                  <Input value={editProd.price} onChange={v => setEditProd({ ...editProd, price: v })} placeholder="0.00" /></div>
+                <div><label style={LBL}>Código</label><Input value={editProd.code} onChange={v => setEditProd({ ...editProd, code: v })} placeholder="CÓD." /></div>
+                <div><label style={LBL}>Precio (S/)</label><Input value={editProd.price} onChange={v => setEditProd({ ...editProd, price: v })} placeholder="0.00" /></div>
               </div>
               <Btn onClick={handleEditProduct} disabled={!editProd.name || !editProd.category} style={{ width: "100%", marginTop: 8 }}>Guardar cambios</Btn>
             </div>
@@ -1379,50 +1593,37 @@ function AdminView({ products, people, operators, categories, currentUser, can,
         </>
       )}
 
-      {/* ── CATEGORIES TAB ── */}
       {tab === "categories" && (
         <>
-          <Btn onClick={() => setShowAddCategory(true)} style={{ width: "100%", marginBottom: 16 }}><Icon name="plus" size={16} /> Agregar categoría</Btn>
-          <div style={{ fontSize: 13, color: C.textMuted, marginBottom: 8, fontWeight: 500 }}>
-            {categories.length} categoría{categories.length !== 1 ? "s" : ""}
-          </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <Btn onClick={() => setShowAddCategory(true)} style={{ width: "100%", marginBottom: 18 }}><Icon name="plus" size={17} /> Agregar categoría</Btn>
+          <div style={{ fontSize: FS.sm, color: C.textMuted, marginBottom: 10, fontWeight: 500 }}>{categories.length} categoría{categories.length !== 1 ? "s" : ""}</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             {categories.map((cat, i) => {
               const count = products.filter(p => p.category === cat).length;
               const isProtected = cat === "Sin categoría";
               return (
                 <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
-                  padding: "12px 14px", borderRadius: 8, background: C.white, border: `1px solid ${C.border}` }}>
+                  padding: "14px 16px", borderRadius: 8, background: C.white, border: `1px solid ${C.border}` }}>
                   <div>
-                    <span style={{ fontSize: 15, color: C.text }}>{cat}</span>
-                    <span style={{ fontSize: 12, color: C.textMuted, marginLeft: 8 }}>{count} producto{count !== 1 ? "s" : ""}</span>
+                    <span style={{ fontSize: FS.md, color: C.text }}>{cat}</span>
+                    <span style={{ fontSize: FS.sm, color: C.textMuted, marginLeft: 8 }}>{count} producto{count !== 1 ? "s" : ""}</span>
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
-                    {!isProtected && (
-                      <button onClick={() => openEditCategory(cat, i)}
-                        style={{ background: "none", border: "none", cursor: "pointer", color: C.gold, fontSize: 12, fontFamily: FONT_BODY, fontWeight: 600 }}>Editar</button>
-                    )}
-                    {!isProtected && count === 0 && (
-                      <button onClick={() => handleRemoveCategory(i, cat)}
-                        style={{ background: "none", border: "none", cursor: "pointer", color: C.red, fontSize: 12, fontFamily: FONT_BODY, fontWeight: 600 }}>Eliminar</button>
-                    )}
-                    {!isProtected && count > 0 && (
-                      <button onClick={() => handleRemoveCategory(i, cat)}
-                        style={{ background: "none", border: "none", cursor: "pointer", color: C.red, fontSize: 12, fontFamily: FONT_BODY, fontWeight: 600 }}>Eliminar</button>
-                    )}
+                    {!isProtected && <button onClick={() => openEditCategory(cat, i)} style={{ background: "none", border: "none", cursor: "pointer", color: C.gold, fontSize: FS.sm, fontFamily: FONT_BODY, fontWeight: 600 }}>Editar</button>}
+                    {!isProtected && <button onClick={() => handleRemoveCategory(i, cat)} style={{ background: "none", border: "none", cursor: "pointer", color: C.red, fontSize: FS.sm, fontFamily: FONT_BODY, fontWeight: 600 }}>Eliminar</button>}
                   </div>
                 </div>
               );
             })}
           </div>
           <Modal open={showAddCategory} onClose={() => setShowAddCategory(false)} title="Agregar Categoría">
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <Input value={newCategory} onChange={setNewCategory} placeholder="Nombre de la categoría" />
               <Btn onClick={handleAddCategory} disabled={!newCategory} style={{ width: "100%" }}>Agregar</Btn>
             </div>
           </Modal>
           <Modal open={showEditCategory !== null} onClose={() => setShowEditCategory(null)} title="Editar Categoría">
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
               <Input value={editCatName} onChange={setEditCatName} placeholder="Nombre de la categoría" />
               <Btn onClick={handleEditCategory} disabled={!editCatName} style={{ width: "100%" }}>Guardar</Btn>
             </div>
@@ -1430,136 +1631,107 @@ function AdminView({ products, people, operators, categories, currentUser, can,
         </>
       )}
 
-      {/* ── PEOPLE TAB ── */}
       {tab === "people" && (
         <>
-          <Btn onClick={() => setShowAddPerson(true)} style={{ width: "100%", marginBottom: 16 }}><Icon name="plus" size={16} /> Agregar consultora</Btn>
+          <Btn onClick={() => setShowAddPerson(true)} style={{ width: "100%", marginBottom: 18 }}><Icon name="plus" size={17} /> Agregar consultora</Btn>
           {people.length === 0 ? (
             <div style={{ textAlign: "center", padding: 50, color: C.textMuted }}>
-              <div style={{ fontSize: 14, marginBottom: 4 }}>No hay consultoras registradas</div>
-              <div style={{ fontSize: 12 }}>Agrega consultoras para poder registrar préstamos</div>
+              <div style={{ fontSize: FS.md, marginBottom: 4 }}>No hay consultoras registradas</div>
+              <div style={{ fontSize: FS.sm }}>Agrega consultoras para poder registrar préstamos</div>
             </div>
           ) : (
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
               {[...people].sort((a, b) => a.name.localeCompare(b.name, "es")).map((p) => {
                 const origIndex = people.findIndex(pp => pp.name === p.name);
                 return (
-                <div key={origIndex} style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
-                  padding: "12px 14px", borderRadius: 8, background: C.white, border: `1px solid ${C.border}` }}>
-                  <div>
-                    <div style={{ fontSize: 15, color: C.text, fontWeight: 500 }}>{p.name}</div>
-                    <div style={{ fontSize: 11, color: C.textMuted, display: "flex", gap: 8, marginTop: 2, flexWrap: "wrap" }}>
-                      {p.phone && <span>📞 {p.phone}</span>}
-                      {p.dni && <span>DNI: {p.dni}</span>}
-                      {p.birthday && <span>🎂 {p.birthday}</span>}
-                      {p.address && <span>📍 {p.address}</span>}
+                  <div key={origIndex} style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
+                    padding: "14px 16px", borderRadius: 8, background: C.white, border: `1px solid ${C.border}` }}>
+                    <div>
+                      <div style={{ fontSize: FS.md, color: C.text, fontWeight: 500 }}>{p.name}</div>
+                      <div style={{ fontSize: FS.xs, color: C.textMuted, display: "flex", gap: 8, marginTop: 3, flexWrap: "wrap" }}>
+                        {p.phone && <span>📞 {p.phone}</span>}
+                        {p.dni && <span>DNI: {p.dni}</span>}
+                        {p.birthday && <span>🎂 {p.birthday}</span>}
+                        {p.address && <span>📍 {p.address}</span>}
+                      </div>
+                    </div>
+                    <div style={{ display: "flex", gap: 8 }}>
+                      <button onClick={() => openEditPerson(p, origIndex)} style={{ background: "none", border: "none", cursor: "pointer", color: C.gold, fontSize: FS.sm, fontFamily: FONT_BODY, fontWeight: 600 }}>Editar</button>
+                      <button onClick={() => handleRemovePerson(origIndex)} style={{ background: "none", border: "none", cursor: "pointer", color: C.red, fontSize: FS.sm, fontFamily: FONT_BODY, fontWeight: 600 }}>Eliminar</button>
                     </div>
                   </div>
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => openEditPerson(p, origIndex)}
-                      style={{ background: "none", border: "none", cursor: "pointer", color: C.gold, fontSize: 12, fontFamily: FONT_BODY, fontWeight: 600 }}>Editar</button>
-                    <button onClick={() => handleRemovePerson(origIndex)}
-                      style={{ background: "none", border: "none", cursor: "pointer", color: C.red, fontSize: 12, fontFamily: FONT_BODY, fontWeight: 600 }}>Eliminar</button>
-                  </div>
-                </div>
                 );
               })}
             </div>
           )}
           <Modal open={showAddPerson} onClose={() => setShowAddPerson(false)} title="Agregar Consultora">
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div><label style={LBL}>Nombre *</label>
-                <Input value={newPerson.name} onChange={v => setNewPerson({ ...newPerson, name: v })} placeholder="Nombre completo" /></div>
-              <div><label style={LBL}>Teléfono</label>
-                <Input value={newPerson.phone} onChange={v => setNewPerson({ ...newPerson, phone: v })} placeholder="Número de teléfono" /></div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div><label style={LBL}>Nombre *</label><Input value={newPerson.name} onChange={v => setNewPerson({ ...newPerson, name: v })} placeholder="Nombre completo" /></div>
+              <div><label style={LBL}>Teléfono</label><Input value={newPerson.phone} onChange={v => setNewPerson({ ...newPerson, phone: v })} placeholder="Número de teléfono" /></div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div><label style={LBL}>DNI</label>
-                  <Input value={newPerson.dni} onChange={v => setNewPerson({ ...newPerson, dni: v })} placeholder="Número de DNI" /></div>
-                <div><label style={LBL}>Cumpleaños</label>
-                  <Input type="date" value={newPerson.birthday} onChange={v => setNewPerson({ ...newPerson, birthday: v })} /></div>
+                <div><label style={LBL}>DNI</label><Input value={newPerson.dni} onChange={v => setNewPerson({ ...newPerson, dni: v })} placeholder="Número de DNI" /></div>
+                <div><label style={LBL}>Cumpleaños</label><Input type="date" value={newPerson.birthday} onChange={v => setNewPerson({ ...newPerson, birthday: v })} /></div>
               </div>
-              <div><label style={LBL}>Dirección</label>
-                <Input value={newPerson.address} onChange={v => setNewPerson({ ...newPerson, address: v })} placeholder="Dirección" /></div>
+              <div><label style={LBL}>Dirección</label><Input value={newPerson.address} onChange={v => setNewPerson({ ...newPerson, address: v })} placeholder="Dirección" /></div>
               <Btn onClick={handleAddPerson} disabled={!newPerson.name} style={{ width: "100%", marginTop: 8 }}>Agregar consultora</Btn>
             </div>
           </Modal>
           <Modal open={showEditPerson !== null} onClose={() => setShowEditPerson(null)} title="Editar Consultora">
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div><label style={LBL}>Nombre *</label>
-                <Input value={editPerson.name} onChange={v => setEditPerson({ ...editPerson, name: v })} placeholder="Nombre completo" /></div>
-              <div><label style={LBL}>Teléfono</label>
-                <Input value={editPerson.phone} onChange={v => setEditPerson({ ...editPerson, phone: v })} placeholder="Número de teléfono" /></div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div><label style={LBL}>Nombre *</label><Input value={editPerson.name} onChange={v => setEditPerson({ ...editPerson, name: v })} placeholder="Nombre completo" /></div>
+              <div><label style={LBL}>Teléfono</label><Input value={editPerson.phone} onChange={v => setEditPerson({ ...editPerson, phone: v })} placeholder="Número de teléfono" /></div>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-                <div><label style={LBL}>DNI</label>
-                  <Input value={editPerson.dni} onChange={v => setEditPerson({ ...editPerson, dni: v })} placeholder="Número de DNI" /></div>
-                <div><label style={LBL}>Cumpleaños</label>
-                  <Input type="date" value={editPerson.birthday} onChange={v => setEditPerson({ ...editPerson, birthday: v })} /></div>
+                <div><label style={LBL}>DNI</label><Input value={editPerson.dni} onChange={v => setEditPerson({ ...editPerson, dni: v })} placeholder="Número de DNI" /></div>
+                <div><label style={LBL}>Cumpleaños</label><Input type="date" value={editPerson.birthday} onChange={v => setEditPerson({ ...editPerson, birthday: v })} /></div>
               </div>
-              <div><label style={LBL}>Dirección</label>
-                <Input value={editPerson.address} onChange={v => setEditPerson({ ...editPerson, address: v })} placeholder="Dirección" /></div>
+              <div><label style={LBL}>Dirección</label><Input value={editPerson.address} onChange={v => setEditPerson({ ...editPerson, address: v })} placeholder="Dirección" /></div>
               <Btn onClick={handleEditPerson} disabled={!editPerson.name} style={{ width: "100%", marginTop: 8 }}>Guardar cambios</Btn>
             </div>
           </Modal>
         </>
       )}
 
-      {/* ── OPERATORS TAB (only admin/directora) ── */}
       {tab === "operators" && canManageOps && (
         <>
-          <Btn onClick={() => setShowAddOperator(true)} style={{ width: "100%", marginBottom: 16 }}><Icon name="plus" size={16} /> Agregar operadora</Btn>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <Btn onClick={() => setShowAddOperator(true)} style={{ width: "100%", marginBottom: 18 }}><Icon name="plus" size={17} /> Agregar operadora</Btn>
+          <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
             {operators.map((o, i) => {
               const isSelf = o.name === currentUser.name;
-              const canDelete = !isSelf;
               return (
                 <div key={i} style={{ display: "flex", alignItems: "center", justifyContent: "space-between",
-                  padding: "12px 14px", borderRadius: 8, background: C.white, border: `1px solid ${C.border}` }}>
+                  padding: "14px 16px", borderRadius: 8, background: C.white, border: `1px solid ${C.border}` }}>
                   <div>
-                    <div style={{ fontSize: 15, color: C.text, display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ fontSize: FS.md, color: C.text, display: "flex", alignItems: "center", gap: 8 }}>
                       {o.name}
-                      <span style={{ fontSize: 11, padding: "2px 8px", borderRadius: 10, fontWeight: 600,
+                      <span style={{ fontSize: FS.xs, padding: "3px 10px", borderRadius: 10, fontWeight: 600,
                         background: o.role === "admin" ? C.goldBg : o.role === "directora" ? C.blueBg : C.bg,
                         color: o.role === "admin" ? C.gold : o.role === "directora" ? C.blue : C.textMuted }}>
                         {ROLES[o.role]}
                       </span>
-                      {o.pin === "0000" && <span style={{ fontSize: 10, color: C.yellow }}>⚠ PIN default</span>}
+                      {o.pin === "0000" && <span style={{ fontSize: FS.xs, color: C.yellow }}>⚠ PIN default</span>}
                     </div>
                   </div>
                   <div style={{ display: "flex", gap: 8 }}>
-                    <button onClick={() => openEditOperator(o)}
-                      style={{ background: "none", border: "none", cursor: "pointer", color: C.gold, fontSize: 12, fontFamily: FONT_BODY, fontWeight: 600 }}>Editar</button>
-                    {canDelete && (
-                      <button onClick={() => handleRemoveOperator(i)}
-                        style={{ background: "none", border: "none", cursor: "pointer", color: C.red, fontSize: 12, fontFamily: FONT_BODY, fontWeight: 600 }}>Eliminar</button>
-                    )}
+                    <button onClick={() => openEditOperator(o)} style={{ background: "none", border: "none", cursor: "pointer", color: C.gold, fontSize: FS.sm, fontFamily: FONT_BODY, fontWeight: 600 }}>Editar</button>
+                    {!isSelf && <button onClick={() => handleRemoveOperator(i)} style={{ background: "none", border: "none", cursor: "pointer", color: C.red, fontSize: FS.sm, fontFamily: FONT_BODY, fontWeight: 600 }}>Eliminar</button>}
                   </div>
                 </div>
               );
             })}
           </div>
           <Modal open={showAddOperator} onClose={() => setShowAddOperator(false)} title="Agregar Operadora">
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div><label style={LBL}>Nombre *</label>
-                <Input value={newOperator.name} onChange={v => setNewOperator({ ...newOperator, name: v })} placeholder="Nombre" /></div>
-              <div><label style={LBL}>PIN (4 dígitos) *</label>
-                <Input type="password" value={newOperator.pin} onChange={v => setNewOperator({ ...newOperator, pin: v.replace(/\D/g, "").slice(0, 4) })}
-                  placeholder="• • • •" style={{ letterSpacing: 6 }} /></div>
-              <div><label style={LBL}>Rol *</label>
-                <Select value={newOperator.role} onChange={v => setNewOperator({ ...newOperator, role: v })}
-                  options={[{value:"asistente",label:"Asistente"},{value:"directora",label:"Directora"},{value:"admin",label:"Admin"}]}
-                  placeholder="Seleccionar rol" /></div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div><label style={LBL}>Nombre *</label><Input value={newOperator.name} onChange={v => setNewOperator({ ...newOperator, name: v })} placeholder="Nombre" /></div>
+              <div><label style={LBL}>PIN (4 dígitos) *</label><Input type="password" value={newOperator.pin} onChange={v => setNewOperator({ ...newOperator, pin: v.replace(/\D/g, "").slice(0, 4) })} placeholder="• • • •" style={{ letterSpacing: 6 }} /></div>
+              <div><label style={LBL}>Rol *</label><Select value={newOperator.role} onChange={v => setNewOperator({ ...newOperator, role: v })} options={[{value:"asistente",label:"Asistente"},{value:"directora",label:"Directora"},{value:"admin",label:"Admin"}]} placeholder="Seleccionar rol" /></div>
               <Btn onClick={handleAddOperator} disabled={!newOperator.name || newOperator.pin.length < 4} style={{ width: "100%", marginTop: 8 }}>Agregar</Btn>
             </div>
           </Modal>
           <Modal open={showEditOperator !== null} onClose={() => setShowEditOperator(null)} title="Editar Operadora">
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              <div style={{ fontSize: 15, fontWeight: 600, color: C.text, padding: "8px 0" }}>{showEditOperator}</div>
-              <div><label style={LBL}>Nuevo PIN (dejar vacío para no cambiar)</label>
-                <Input type="password" value={editOp.pin} onChange={v => setEditOp({ ...editOp, pin: v.replace(/\D/g, "").slice(0, 4) })}
-                  placeholder="• • • •" style={{ letterSpacing: 6 }} /></div>
-              <div><label style={LBL}>Rol</label>
-                <Select value={editOp.role} onChange={v => setEditOp({ ...editOp, role: v })}
-                  options={[{value:"asistente",label:"Asistente"},{value:"directora",label:"Directora"},{value:"admin",label:"Admin"}]} /></div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              <div style={{ fontSize: FS.md, fontWeight: 600, color: C.text, padding: "8px 0" }}>{showEditOperator}</div>
+              <div><label style={LBL}>Nuevo PIN (dejar vacío para no cambiar)</label><Input type="password" value={editOp.pin} onChange={v => setEditOp({ ...editOp, pin: v.replace(/\D/g, "").slice(0, 4) })} placeholder="• • • •" style={{ letterSpacing: 6 }} /></div>
+              <div><label style={LBL}>Rol</label><Select value={editOp.role} onChange={v => setEditOp({ ...editOp, role: v })} options={[{value:"asistente",label:"Asistente"},{value:"directora",label:"Directora"},{value:"admin",label:"Admin"}]} /></div>
               <Btn onClick={handleEditOperator} style={{ width: "100%", marginTop: 8 }}>Guardar cambios</Btn>
             </div>
           </Modal>
