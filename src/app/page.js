@@ -42,9 +42,19 @@ async function gsRead(action) {
 
 async function gsWrite(action, data, extra = "") {
   try {
-    const params = new URLSearchParams({ action, data: JSON.stringify(data) });
-    if (extra) extra.split("&").forEach(p => { const [k,v] = p.split("="); params.set(k,v); });
-    const r = await fetch(`${APPS_SCRIPT_URL}?${params.toString()}`, { redirect: "follow" });
+    const url = extra
+      ? `${APPS_SCRIPT_URL}?action=${action}&${extra}`
+      : `${APPS_SCRIPT_URL}?action=${action}`;
+    
+    const body = { action, data: JSON.stringify(data) };
+    if (extra) extra.split("&").forEach(p => { const [k,v] = p.split("="); body[k] = v; });
+
+    const r = await fetch(url, {
+      method: "POST",
+      redirect: "follow",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
     const text = await r.text();
     try { return JSON.parse(text); }
     catch { console.error("gsWrite parse error:", text.slice(0, 200)); return { error: "Parse error" }; }
